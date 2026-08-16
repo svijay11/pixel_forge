@@ -1,10 +1,19 @@
 export type ChecklistItem = {
   item: string
+  why?: string | null
+  focus?: string | null
   verified: boolean
+}
+
+export type BriefBeat = {
+  title: string
+  body: string
 }
 
 export type AssessResponse = {
   riskBrief: string
+  headline?: string | null
+  beats?: BriefBeat[]
   checklist: ChecklistItem[]
   hazardZone: string
   nearbyHotspots: Array<{

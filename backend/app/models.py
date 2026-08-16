@@ -13,7 +13,14 @@ class AssessRequest(BaseModel):
 
 class ChecklistItem(BaseModel):
     item: str
+    why: Optional[str] = None
+    focus: Optional[str] = None
     verified: bool
+
+
+class BriefBeat(BaseModel):
+    title: str
+    body: str
 
 
 class Hotspot(BaseModel):
@@ -52,6 +59,8 @@ class Alert(BaseModel):
 
 class AssessResponse(BaseModel):
     riskBrief: str
+    headline: Optional[str] = None
+    beats: List[BriefBeat] = Field(default_factory=list)
     checklist: List[ChecklistItem]
     hazardZone: str
     nearbyHotspots: List[Hotspot] = Field(default_factory=list)

@@ -11,7 +11,7 @@ from .config import settings
 from .firms import fetch_hotspots
 from .hazard import lookup_hazard_zone
 from .incidents import fetch_incidents
-from .knowledge import retrieve
+from .knowledge import retrieve_for_parcel
 from .models import AssessResponse, Wind
 from .noaa import fetch_weather
 from .openrouter import generate_checklist, synthesize_brief, verify_checklist
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 CacheKey = Tuple[str, float, float]
 _inflight: Dict[CacheKey, "asyncio.Future[AssessResponse]"] = {}
 _recent: Dict[CacheKey, Tuple[float, AssessResponse]] = {}
-_CACHE_TTL = 45.0
+_CACHE_TTL = 8.0
 
 
 def _cache_key(address: str, lat: float, lon: float) -> CacheKey:
@@ -79,7 +79,13 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
         incidents = []
 
     hazard_zone = lookup_hazard_zone(lat, lon)
-    docs = retrieve(hazard_zone)
+    nearest_miles = incidents[0].miles if incidents else None
+    docs = retrieve_for_parcel(
+        hazard_zone,
+        nearest_incident_miles=nearest_miles,
+        alert_events=[a.event for a in alerts],
+        hotspot_count=len(hotspots),
+    )
     logger.info(
         "data ready in %.1fs zone=%s hotspots=%s incidents=%s docs=%s",
         time.monotonic() - started,
@@ -92,7 +98,7 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
     if not settings.openrouter_api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
-    brief = await synthesize_brief(
+    brief, headline, beats = await synthesize_brief(
         address=address,
         lat=lat,
         lon=lon,
@@ -106,12 +112,27 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
         address=address,
         hazard_zone=hazard_zone,
         docs=docs,
+        wind=wind,
+        alerts=alerts,
+        hotspots=hotspots,
+        incidents=incidents,
     )
-    checklist = verify_checklist(raw_items, docs)
+    checklist = verify_checklist(
+        raw_items,
+        docs,
+        address=address,
+        hazard_zone=hazard_zone,
+        wind=wind,
+        alerts=alerts,
+        hotspots=hotspots,
+        incidents=incidents,
+    )
     logger.info("assess complete in %.1fs", time.monotonic() - started)
 
     return AssessResponse(
         riskBrief=brief,
+        headline=headline or None,
+        beats=beats,
         checklist=checklist,
         hazardZone=hazard_zone,
         nearbyHotspots=hotspots,
