@@ -73,11 +73,11 @@ export function ProductWorkspace({
             </div>
           </header>
 
-          <div className="relative min-h-[280px] flex-1 overflow-hidden">
+          <div className="relative z-0 min-h-[280px] flex-1 overflow-hidden">
             <MapBackground onCoordChange={onCoordChange} />
           </div>
 
-          <div className="border-t border-line bg-paper px-4 py-4 sm:px-6 sm:py-5">
+          <div className="relative z-10 border-t border-line bg-paper px-4 py-4 sm:px-6 sm:py-5">
             <AddressSearch />
           </div>
         </div>
