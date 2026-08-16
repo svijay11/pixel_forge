@@ -1,0 +1,185 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-obsidian: #0b0f14;
+  --color-slate: #141b22;
+  --color-ember: #ff7a3d;
+  --color-alert: #d93a2b;
+  --color-ash: #6b6b6b;
+  --color-warm: #efe9df;
+  --color-canvas: #f5f5f3;
+  --color-ink: #171717;
+  --color-sage: #b7d188;
+  --color-mist: #e7f0d6;
+  --color-paper: #ffffff;
+  --color-line: #e6e6e3;
+
+  --font-display: 'Newsreader', ui-serif, Georgia, serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+:root {
+  --background: #f5f5f3;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #b7d188;
+  --primary-foreground: #171717;
+  --secondary: #eeeeec;
+  --secondary-foreground: #171717;
+  --muted: #f0f0ee;
+  --muted-foreground: #6b6b6b;
+  --accent: #eeeeec;
+  --accent-foreground: #171717;
+  --destructive: #d93a2b;
+  --border: #e6e6e3;
+  --input: #e6e6e3;
+  --ring: #b7d188;
+  --radius: 0.9rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --animate-blink-cursor: blink-cursor 1.2s step-end infinite;
+
+  @keyframes blink-cursor {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-sage);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-sage);
+    outline-offset: 3px;
+  }
+}
+
+.hotspot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+
+.hotspot-core {
+  position: absolute;
+  inset: 2px;
+  border-radius: 9999px;
+  background: #ff7a3d;
+  box-shadow: 0 0 10px 3px rgb(255 122 61 / 0.55);
+}
+
+.hotspot-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: #ff7a3d;
+  animation: hotspot-pulse 3.4s ease-out infinite;
+}
+
+.hotspot-ring-delay-1 {
+  animation-delay: 1.1s;
+}
+
+.hotspot-ring-delay-2 {
+  animation-delay: 2.2s;
+}
+
+@keyframes hotspot-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(4.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(4.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hotspot-ring {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.mapboxgl-ctrl-attrib {
+  background: transparent !important;
+  color: #8b93a0 !important;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.mapboxgl-ctrl-attrib a {
+  color: #8b93a0 !important;
+}
+
+.mapboxgl-ctrl-logo {
+  opacity: 0.45;
+}
