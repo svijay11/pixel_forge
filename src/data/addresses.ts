@@ -1,10 +1,12 @@
-export type StubAddress = {
+export type AddressSuggestion = {
   id: string
   line1: string
   line2: string
+  lat?: number
+  lng?: number
 }
 
-export const STUB_ADDRESSES: StubAddress[] = [
+export const STUB_ADDRESSES: AddressSuggestion[] = [
   {
     id: 'palisades',
     line1: '1428 Oak Crest Drive',

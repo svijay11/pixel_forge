@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 export function ResultsPage() {
   const [params] = useSearchParams()
   const query = params.get('q')
+  const lat = params.get('lat')
+  const lng = params.get('lng')
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
@@ -24,6 +26,11 @@ export function ResultsPage() {
         </h1>
         {query ? (
           <p className="mt-4 font-sans text-sm leading-relaxed text-muted-foreground">{query}</p>
+        ) : null}
+        {lat && lng ? (
+          <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+            {lat}°, {lng}°
+          </p>
         ) : null}
         <p className="mt-6 max-w-sm font-sans text-[15px] leading-relaxed text-muted-foreground">
           The risk brief and action checklist are not wired yet. Address entry is as far as

@@ -169,17 +169,24 @@
   }
 }
 
-.mapboxgl-ctrl-attrib {
+.leaflet-container {
+  background: #0b0f14;
+  font: inherit;
+}
+
+.leaflet-div-icon,
+.hotspot-icon {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-control-attribution {
   background: transparent !important;
   color: #8b93a0 !important;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 10px;
 }
 
-.mapboxgl-ctrl-attrib a {
+.leaflet-control-attribution a {
   color: #8b93a0 !important;
-}
-
-.mapboxgl-ctrl-logo {
-  opacity: 0.45;
 }

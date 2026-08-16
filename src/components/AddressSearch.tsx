@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { ArrowUp, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { STUB_ADDRESSES, type StubAddress } from '@/data/addresses'
+import { STUB_ADDRESSES } from '@/data/addresses'
+import { searchAddresses, type AddressSuggestion } from '@/lib/geocode'
 import { TypingAnimation } from '@/components/ui/typing-animation'
 import { cn } from '@/lib/utils'
 
@@ -17,24 +18,58 @@ export function AddressSearch({ className }: AddressSearchProps) {
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [matches, setMatches] = useState<AddressSuggestion[]>(STUB_ADDRESSES)
+  const [loading, setLoading] = useState(false)
 
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return STUB_ADDRESSES
-    return STUB_ADDRESSES.filter((a) =>
-      `${a.line1} ${a.line2}`.toLowerCase().includes(q),
-    )
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 3) {
+      setMatches(STUB_ADDRESSES)
+      setLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    setLoading(true)
+    const timer = window.setTimeout(() => {
+      void searchAddresses(q)
+        .then((results) => {
+          if (controller.signal.aborted) return
+          setMatches(results)
+        })
+        .catch(() => {
+          if (controller.signal.aborted) return
+          setMatches(
+            STUB_ADDRESSES.filter((a) =>
+              `${a.line1} ${a.line2}`.toLowerCase().includes(q.toLowerCase()),
+            ),
+          )
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false)
+        })
+    }, 400)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
   }, [query])
 
   useEffect(() => {
     setActiveIndex(0)
-  }, [matches.length, query])
+  }, [matches])
 
-  function submit(address?: StubAddress) {
+  function submit(address?: AddressSuggestion) {
     const value = address ? `${address.line1}, ${address.line2}` : query.trim()
     if (!value) return
-    console.log('address submit', value)
-    navigate(`/app/results?q=${encodeURIComponent(value)}`)
+    const params = new URLSearchParams({ q: value })
+    if (address?.lat != null && address.lng != null) {
+      params.set('lat', String(address.lat))
+      params.set('lng', String(address.lng))
+    }
+    console.log('address submit', { value, lat: address?.lat, lng: address?.lng })
+    navigate(`/app/results?${params.toString()}`)
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -138,9 +173,11 @@ export function AddressSearch({ className }: AddressSearchProps) {
           aria-label="Suggested addresses"
           className="absolute inset-x-0 bottom-[calc(100%+10px)] z-20 overflow-hidden rounded-2xl border border-line bg-paper py-2 shadow-[0_16px_40px_rgba(23,23,23,0.1)]"
         >
-          {matches.length === 0 ? (
+          {loading ? (
+            <li className="px-4 py-3 font-sans text-sm text-muted-foreground">Searching…</li>
+          ) : matches.length === 0 ? (
             <li className="px-4 py-3 font-sans text-sm text-muted-foreground">
-              No matching addresses in this stub list
+              No matching California addresses
             </li>
           ) : (
             matches.map((address, index) => {
