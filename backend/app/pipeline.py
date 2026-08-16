@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+from typing import Dict, Tuple
+
+import httpx
+
+from .config import settings
+from .firms import fetch_hotspots
+from .hazard import lookup_hazard_zone
+from .incidents import fetch_incidents
+from .knowledge import retrieve
+from .models import AssessResponse, Wind
+from .noaa import fetch_weather
+from .openrouter import generate_checklist, synthesize_brief, verify_checklist
+
+logger = logging.getLogger(__name__)
+
+CacheKey = Tuple[str, float, float]
+_inflight: Dict[CacheKey, "asyncio.Future[AssessResponse]"] = {}
+_recent: Dict[CacheKey, Tuple[float, AssessResponse]] = {}
+_CACHE_TTL = 45.0
+
+
+def _cache_key(address: str, lat: float, lon: float) -> CacheKey:
+    return (address.strip().lower(), round(lat, 4), round(lon, 4))
+
+
+async def run_assess(address: str, lat: float, lon: float) -> AssessResponse:
+    key = _cache_key(address, lat, lon)
+    cached = _recent.get(key)
+    if cached and time.monotonic() - cached[0] < _CACHE_TTL:
+        logger.info("assess cache hit for %s", address)
+        return cached[1]
+
+    existing = _inflight.get(key)
+    if existing is not None:
+        logger.info("assess coalesced with in-flight request for %s", address)
+        return await existing
+
+    loop = asyncio.get_running_loop()
+    future: asyncio.Future[AssessResponse] = loop.create_future()
+    _inflight[key] = future
+    try:
+        result = await _run_assess(address, lat, lon)
+        _recent[key] = (time.monotonic(), result)
+        future.set_result(result)
+        return result
+    except Exception as exc:
+        if not future.done():
+            future.set_exception(exc)
+        raise
+    finally:
+        _inflight.pop(key, None)
+
+
+async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
+    started = time.monotonic()
+    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        hotspots, weather, incidents = await asyncio.gather(
+            fetch_hotspots(client, lat, lon),
+            fetch_weather(client, lat, lon),
+            fetch_incidents(client, lat, lon),
+            return_exceptions=True,
+        )
+
+    if isinstance(hotspots, BaseException):
+        logger.warning("hotspots failed: %s", hotspots)
+        hotspots = []
+    if isinstance(weather, BaseException):
+        logger.warning("weather failed: %s", weather)
+        wind, alerts = Wind(), []
+    else:
+        wind, alerts = weather
+    if isinstance(incidents, BaseException):
+        logger.warning("incidents failed: %s", incidents)
+        incidents = []
+
+    hazard_zone = lookup_hazard_zone(lat, lon)
+    docs = retrieve(hazard_zone)
+    logger.info(
+        "data ready in %.1fs zone=%s hotspots=%s incidents=%s docs=%s",
+        time.monotonic() - started,
+        hazard_zone,
+        len(hotspots),
+        len(incidents),
+        len(docs),
+    )
+
+    if not settings.openrouter_api_key:
+        raise RuntimeError("OPENROUTER_API_KEY is not set")
+
+    brief = await synthesize_brief(
+        address=address,
+        lat=lat,
+        lon=lon,
+        hazard_zone=hazard_zone,
+        wind=wind,
+        alerts=alerts,
+        hotspots=hotspots,
+        incidents=incidents,
+    )
+    raw_items = await generate_checklist(
+        address=address,
+        hazard_zone=hazard_zone,
+        docs=docs,
+    )
+    checklist = verify_checklist(raw_items, docs)
+    logger.info("assess complete in %.1fs", time.monotonic() - started)
+
+    return AssessResponse(
+        riskBrief=brief,
+        checklist=checklist,
+        hazardZone=hazard_zone,
+        nearbyHotspots=hotspots,
+        nearbyIncidents=incidents,
+        wind=wind,
+        alerts=alerts,
+        address=address,
+    )

@@ -14,6 +14,13 @@ dist-ssr
 .env
 .env.*
 !.env.example
+!**/.env.example
+backend/.env
+backend/.venv
+backend/data/*.geojson
+backend/__pycache__
+backend/**/__pycache__
+*.pyc
 
 # Editor directories and files
 .vscode/*

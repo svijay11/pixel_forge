@@ -51,14 +51,20 @@ export function ProductWorkspace({
 
         <div className="flex min-h-[min(68vh,640px)] flex-1 flex-col">
           <header className="flex flex-col items-center px-4 py-6 text-center sm:py-7">
-            <h2 className="font-display text-2xl font-medium tracking-[-0.02em] text-ink sm:text-[28px]">
+            <h2 className="font-display text-xl font-normal tracking-[-0.01em] text-ink sm:text-2xl">
               California live feed
             </h2>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              <span className="rounded-full bg-muted px-3 py-1 font-sans text-xs text-ink">
+              <span
+                className="js-scramble rounded-full bg-muted px-3 py-1 font-sans text-xs text-ink"
+                data-scramble="NASA FIRMS"
+              >
                 NASA FIRMS
               </span>
-              <span className="rounded-full bg-muted px-3 py-1 font-sans text-xs text-ink">
+              <span
+                className="js-scramble rounded-full bg-muted px-3 py-1 font-sans text-xs text-ink"
+                data-scramble="VIIRS / MODIS"
+              >
                 VIIRS / MODIS
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 font-sans text-xs text-ink">

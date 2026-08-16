@@ -16,7 +16,7 @@
   --color-paper: #ffffff;
   --color-line: #e6e6e3;
 
-  --font-display: 'Newsreader', ui-serif, Georgia, serif;
+  --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
@@ -40,7 +40,7 @@
   --border: #e6e6e3;
   --input: #e6e6e3;
   --ring: #b7d188;
-  --radius: 0.9rem;
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -189,4 +189,55 @@
 
 .leaflet-control-attribution a {
   color: #8b93a0 !important;
+}
+
+.hero-title,
+.results-title {
+  font-kerning: none;
+  text-rendering: optimizeSpeed;
+  text-indent: 0;
+}
+
+.hero-title {
+  white-space: nowrap;
+}
+
+.hero-title .char,
+.hero-title .word,
+.results-title .char,
+.split-char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.hero-title .char,
+.hero-title .word {
+  white-space: nowrap;
+}
+
+.hero-title .word:first-child,
+.hero-title .char:first-child {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.hero-lead {
+  display: block;
+}
+
+.hero-rule {
+  margin-left: 0;
+  transform-origin: left center;
+}
+
+.gsap-card,
+.gsap-heading,
+.gsap-copy,
+.hero-stage {
+  will-change: transform, opacity;
+}
+
+.ember-pixel {
+  transform-box: fill-box;
+  transform-origin: center;
 }
