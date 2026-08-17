@@ -9,7 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .hazard import load_hazard_index
-from .models import AssessRequest, AssessResponse
+from .models import AssessRequest, AssessResponse, EscapeRouteRequest, EscapeRouteResponse
+from .ors import driving_route
 from .pipeline import run_assess
 
 logging.basicConfig(level=logging.INFO)
@@ -37,9 +38,14 @@ app.add_middleware(
 )
 
 
-@app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@app.post("/api/escape-route", response_model=EscapeRouteResponse)
+async def escape_route(body: EscapeRouteRequest) -> EscapeRouteResponse:
+    if not (32.0 <= body.startLat <= 42.5 and -125.0 <= body.startLon <= -113.0):
+        raise HTTPException(status_code=400, detail="Start coordinates must be in California")
+    if not (31.0 <= body.endLat <= 43.5 and -126.5 <= body.endLon <= -112.0):
+        raise HTTPException(status_code=400, detail="Route destination is out of range")
+    geometry = await driving_route(body.startLon, body.startLat, body.endLon, body.endLat)
+    return EscapeRouteResponse(geometry=geometry)
 
 
 @app.post("/api/assess", response_model=AssessResponse)

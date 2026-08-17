@@ -12,6 +12,10 @@
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "@tailwindcss/vite": "^4.3.3",
+    "@turf/bbox": "^7.4.0",
+    "@turf/bearing": "^7.4.0",
+    "@turf/circle": "^7.4.0",
+    "@turf/destination": "^7.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^13.1.0",

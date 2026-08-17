@@ -10,6 +10,7 @@ load_dotenv(BACKEND_ROOT / ".env")
 class Settings:
     openrouter_api_key: str
     firms_map_key: str
+    openrouteservice_api_key: str
     contact_email: str
     openrouter_model: str
     frontend_origin: str
@@ -19,6 +20,7 @@ class Settings:
     def __init__(self) -> None:
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
         self.firms_map_key = os.getenv("FIRMS_MAP_KEY", "")
+        self.openrouteservice_api_key = os.getenv("OPENROUTESERVICE_API_KEY", "")
         self.contact_email = os.getenv(
             "CONTACT_EMAIL",
             "ember-wildfire-copilot@example.com",

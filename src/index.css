@@ -12,13 +12,14 @@
   --color-canvas: #f5f5f3;
   --color-ink: #171717;
   --color-sage: #b7d188;
+  --color-sage-monitor: #6e9b6b;
   --color-mist: #e7f0d6;
   --color-paper: #ffffff;
   --color-line: #e6e6e3;
 
-  --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -183,7 +184,7 @@
 .leaflet-control-attribution {
   background: transparent !important;
   color: #8b93a0 !important;
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
   font-size: 10px;
 }
 
@@ -191,10 +192,52 @@
   color: #8b93a0 !important;
 }
 
+.threat-map {
+  width: 100%;
+  height: 100%;
+}
+
+.threat-home-wrap,
+.threat-fire-wrap {
+  pointer-events: auto;
+}
+
+.threat-home-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #efe9df;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.threat-fire-mark {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #d93a2b;
+  border: 2px solid #efe9df;
+  box-shadow: 0 0 0 7px rgb(217 58 43 / 0.28);
+}
+
+.threat-map .leaflet-popup-content-wrapper,
+.threat-map .leaflet-popup-tip {
+  background: #0b0f14;
+  color: #efe9df;
+  box-shadow: none;
+}
+
+.threat-map .leaflet-popup-content {
+  font-family: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  margin: 10px 12px;
+}
+
 .hero-title,
 .results-title {
-  font-kerning: none;
-  text-rendering: optimizeSpeed;
   text-indent: 0;
 }
 

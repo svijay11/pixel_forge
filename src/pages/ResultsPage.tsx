@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Check, Flag } from 'lucide-react'
-import { WaitClock } from '@/components/WaitClock'
+import { FlyInMap } from '@/components/FlyInMap'
+import { ThreatMapPanel } from '@/components/ThreatMapPanel'
 import { Magnetic } from '@/components/Magnetic'
 import { Nav } from '@/components/Nav'
 import { StatCard } from '@/components/StatCard'
@@ -9,6 +10,7 @@ import { Wordmark } from '@/components/Wordmark'
 import { Button } from '@/components/ui/button'
 import { useResultsMotion } from '@/hooks/useResultsMotion'
 import { assessAddress, type AssessResponse, type ChecklistItem } from '@/lib/assess'
+import { pickThreatAnchor } from '@/lib/threatAnchor'
 import { formatCoord } from '@/lib/mapStyle'
 import type { Stat } from '@/data/stats'
 import { cn } from '@/lib/utils'
@@ -92,14 +94,23 @@ export function ResultsPage() {
   const [data, setData] = useState<AssessResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [intro, setIntro] = useState(true)
+  const [mapOpen, setMapOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  useResultsMotion(rootRef, Boolean(data))
+  const latitude = lat ? Number(lat) : NaN
+  const longitude = lng ? Number(lng) : NaN
+  const hasCoords = Number.isFinite(latitude) && Number.isFinite(longitude)
+  const showIntro = intro && hasCoords
+  const showResults = Boolean(data) && !showIntro
+  useResultsMotion(rootRef, showResults)
+
+  useEffect(() => {
+    setIntro(true)
+  }, [query, lat, lng])
 
   useEffect(() => {
     if (!query || !lat || !lng) return
-    const latitude = Number(lat)
-    const longitude = Number(lng)
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!hasCoords) {
       setError('The selected address is missing valid coordinates.')
       return
     }
@@ -125,7 +136,7 @@ export function ResultsPage() {
     }
   }, [query, lat, lng])
 
-  const missingCoords = !lat || !lng
+  const missingCoords = !hasCoords
   const beats = useMemo(() => {
     if (!data) return []
     if (data.beats && data.beats.length > 0) return data.beats
@@ -133,9 +144,28 @@ export function ResultsPage() {
   }, [data])
   const checklistGroups = data ? groupChecklist(data.checklist) : []
   const stats = data ? snapshotStats(data) : []
+  const threatAnchor = useMemo(() => {
+    if (!data || !hasCoords) return null
+    return pickThreatAnchor(data, { lat: latitude, lon: longitude })
+  }, [data, hasCoords, latitude, longitude])
 
   return (
-    <div ref={rootRef} className="min-h-dvh bg-canvas text-ink">
+    <div
+      ref={rootRef}
+      className={cn('min-h-dvh bg-canvas text-ink', showIntro && 'h-dvh overflow-hidden')}
+    >
+      {showIntro ? (
+        <FlyInMap
+          lat={latitude}
+          lng={longitude}
+          label={streetLine(query)}
+          ready={!loading && (data !== null || error !== null)}
+          onComplete={() => setIntro(false)}
+        />
+      ) : null}
+
+      {showIntro ? null : (
+        <>
       <Nav />
 
       <section className="bg-canvas px-6 pb-16 pt-4 sm:px-10 sm:pt-8 lg:px-16">
@@ -188,7 +218,7 @@ export function ResultsPage() {
               </span>
             ) : null}
           </div>
-          <div className="hero-cta mt-8">
+          <div className="hero-cta mt-8 flex flex-wrap items-center gap-3">
             <Magnetic strength={0.18}>
               <Button
                 asChild
@@ -197,6 +227,17 @@ export function ResultsPage() {
                 <Link to="/app">New address</Link>
               </Button>
             </Magnetic>
+            {data ? (
+              <Magnetic strength={0.18}>
+                <Button
+                  type="button"
+                  onClick={() => setMapOpen(true)}
+                  className="h-10 rounded-[8px] bg-ink px-5 font-sans text-[14px] font-medium text-paper shadow-none hover:bg-ink/90"
+                >
+                  View escape route
+                </Button>
+              </Magnetic>
+            ) : null}
           </div>
         </div>
       </section>
@@ -210,24 +251,6 @@ export function ResultsPage() {
             <Button asChild className="mt-5 h-10 rounded-[8px] bg-sage px-5 text-ink">
               <Link to="/app">Return to search</Link>
             </Button>
-          </div>
-        </section>
-      ) : null}
-
-      {loading ? (
-        <section className="bg-paper px-6 pb-20 pt-28 sm:px-10 sm:pt-36 md:pb-28 md:pt-44 lg:px-16">
-          <div className="mx-auto max-w-[1280px]">
-            <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-20">
-              <div className="max-w-xl">
-                <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
-                  LIVE PULL
-                </p>
-                <h2 className="mt-3 font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink md:text-[2.5rem]">
-                  Pulling FIRMS, NOAA, and CAL FIRE for this parcel.
-                </h2>
-              </div>
-              <WaitClock className="lg:ml-auto" />
-            </div>
           </div>
         </section>
       ) : null}
@@ -425,7 +448,16 @@ export function ResultsPage() {
             <p className="mx-auto mt-4 max-w-md font-sans text-[16px] text-ink/70">
               Ember is readiness for this structure. Evacuation orders come from local authorities.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Magnetic>
+                <Button
+                  type="button"
+                  onClick={() => setMapOpen(true)}
+                  className="h-10 rounded-[8px] border border-ink/20 bg-paper px-5 font-sans text-[14px] font-medium text-ink shadow-none hover:bg-warm"
+                >
+                  View escape route
+                </Button>
+              </Magnetic>
               <Magnetic>
                 <Button
                   asChild
@@ -447,6 +479,17 @@ export function ResultsPage() {
           </p>
         </div>
       </footer>
+        </>
+      )}
+
+      {data && hasCoords ? (
+        <ThreatMapPanel
+          open={mapOpen}
+          onClose={() => setMapOpen(false)}
+          home={{ lat: latitude, lon: longitude }}
+          threatAnchor={threatAnchor}
+        />
+      ) : null}
     </div>
   )
 }

@@ -29,6 +29,9 @@ export type AssessResponse = {
     acres?: number | null
     contained?: number | null
     miles?: number | null
+    lat?: number | null
+    lon?: number | null
+    active?: boolean | null
   }>
   wind: { speed?: string | null; direction?: string | null }
   alerts: Array<{

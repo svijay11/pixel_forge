@@ -11,6 +11,17 @@ class AssessRequest(BaseModel):
     lon: float
 
 
+class EscapeRouteRequest(BaseModel):
+    startLat: float
+    startLon: float
+    endLat: float
+    endLon: float
+
+
+class EscapeRouteResponse(BaseModel):
+    geometry: Optional[dict] = None
+
+
 class ChecklistItem(BaseModel):
     item: str
     why: Optional[str] = None

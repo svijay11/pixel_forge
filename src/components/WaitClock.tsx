@@ -10,22 +10,30 @@ function FlipFace({
   value,
   label,
   className,
+  compact = false,
 }: {
   value: string
   label?: string
   className?: string
+  compact?: boolean
 }) {
   return (
     <div
       className={cn(
-        'relative flex min-h-[7.5rem] flex-1 items-center justify-center overflow-hidden sm:min-h-[9.5rem]',
+        'relative flex flex-1 items-center justify-center overflow-hidden',
+        compact ? 'min-h-[5.75rem] sm:min-h-[7.25rem]' : 'min-h-[7.5rem] sm:min-h-[9.5rem]',
         className,
       )}
       style={{ perspective: '900px' }}
     >
       <span
         key={value}
-        className="wait-flip font-sans text-[4.6rem] font-medium leading-none tracking-[-0.04em] text-[#d8d8d8] sm:text-[6.25rem]"
+        className={cn(
+          'wait-flip font-sans font-medium leading-none tracking-[-0.04em] text-[#d8d8d8]',
+          compact
+            ? 'text-[3.6rem] sm:text-[4.75rem]'
+            : 'text-[4.6rem] sm:text-[6.25rem]',
+        )}
       >
         {value}
       </span>
@@ -46,7 +54,13 @@ function FlipFace({
   )
 }
 
-export function WaitClock({ className }: { className?: string }) {
+export function WaitClock({
+  className,
+  tone = 'light',
+}: {
+  className?: string
+  tone?: 'light' | 'onDark'
+}) {
   const [elapsed, setElapsed] = useState(0)
   const [jokeIndex, setJokeIndex] = useState(0)
 
@@ -67,6 +81,7 @@ export function WaitClock({ className }: { className?: string }) {
 
   const minutes = pad2(Math.min(Math.floor(elapsed / 60), 99))
   const seconds = pad2(elapsed % 60)
+  const onDark = tone === 'onDark'
 
   return (
     <div className={cn('w-full max-w-[34rem]', className)}>
@@ -76,13 +91,16 @@ export function WaitClock({ className }: { className?: string }) {
         aria-live="polite"
         aria-label={`Elapsed ${minutes} minutes ${seconds} seconds`}
       >
-        <FlipFace value={minutes} label="MIN" />
+        <FlipFace value={minutes} label="MIN" compact={onDark} />
         <div aria-hidden className="w-px shrink-0 bg-black/70" />
-        <FlipFace value={seconds} label="SEC" />
+        <FlipFace value={seconds} label="SEC" compact={onDark} />
       </div>
       <p
         key={jokeIndex}
-        className="wait-joke mt-8 min-h-[3.5rem] text-center font-sans text-[16px] leading-relaxed text-[#555555] sm:text-[17px]"
+        className={cn(
+          'wait-joke mt-8 min-h-[3.5rem] text-center font-sans text-[16px] leading-relaxed sm:text-[17px]',
+          onDark ? 'text-[#c5c5c5]' : 'text-[#555555]',
+        )}
       >
         {WAIT_JOKES[jokeIndex]}
       </p>
