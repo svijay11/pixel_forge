@@ -254,7 +254,7 @@ def _fallback_brief(
                 + (f" in {nearest.county} County." if nearest.county else ".")
             )
             if nearest and nearest.miles is not None
-            else "CAL FIRE lists no active incidents within 50 miles.",
+            else "CAL FIRE lists no active incidents in the current statewide feed.",
         ),
         BriefBeat(
             title="Wind and alerts",
@@ -303,6 +303,14 @@ def _fallback_checklist(
                 "focus": "now",
             },
         )
+    else:
+        items.append(
+            {
+                "item": f"Confirm local alerts for {street} before you assume the air and roads are quiet.",
+                "why": "CAL FIRE lists no active incident in the current statewide feed for this point.",
+                "focus": "now",
+            },
+        )
     if wind.speed:
         direction = f" from the {wind.direction}" if wind.direction else ""
         items.append(
@@ -319,6 +327,14 @@ def _fallback_checklist(
             {
                 "item": f"Keep a go-bag at {street} ready: 3-day food, 3 gallons of water per person, and two routes.",
                 "why": f"NASA FIRMS shows {len(hotspots)} satellite hotspots in 48h{miles_bit}.",
+                "focus": "today",
+            },
+        )
+    if not any(row["focus"] == "today" for row in items):
+        items.append(
+            {
+                "item": f"Pack a go-bag at {street}: 3-day food, 3 gallons of water per person, and two routes out.",
+                "why": "Ready for Wildfire treats a go-bag as standard even when no hotspot is in the 48h window.",
                 "focus": "today",
             },
         )

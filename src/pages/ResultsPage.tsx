@@ -79,7 +79,7 @@ function snapshotStats(data: AssessResponse): Stat[] {
       caption: data.nearbyIncidents[0]
         ? `NEAREST: ${data.nearbyIncidents[0].name.toUpperCase()}`
         : 'NEAREST CAL FIRE INCIDENT',
-      source: data.nearbyIncidents[0] ? 'Incidents GeoJSON' : 'None within 50 mi',
+      source: data.nearbyIncidents[0] ? 'Incidents GeoJSON' : 'None in the active feed',
     },
   ]
 }
@@ -306,12 +306,12 @@ export function ResultsPage() {
                   <div className="flex items-center justify-between border-b border-line px-5 py-4">
                     <p className="font-display text-lg text-ink">Nearby incidents</p>
                     <span className="rounded-full bg-canvas px-3 py-1 font-sans text-xs text-muted-foreground">
-                      {data.nearbyIncidents.length} within 50 mi
+                      {data.nearbyIncidents.length} active
                     </span>
                   </div>
                   {data.nearbyIncidents.length === 0 ? (
                     <p className="px-5 py-6 font-sans text-[15px] text-muted-foreground">
-                      CAL FIRE lists no active incidents within 50 miles of this point.
+                      CAL FIRE lists no active incidents in the current statewide feed.
                     </p>
                   ) : (
                     <ul>

@@ -44,8 +44,6 @@ async def fetch_incidents(client: httpx.AsyncClient, lat: float, lon: float) -> 
         if ilat is None or ilon is None:
             continue
         miles = haversine_miles(lat, lon, ilat, ilon)
-        if miles > 50:
-            continue
         name = (
             props.get("Name")
             or props.get("IncidentName")
@@ -67,7 +65,11 @@ async def fetch_incidents(client: httpx.AsyncClient, lat: float, lon: float) -> 
         )
 
     incidents.sort(key=lambda i: i.miles or 999)
-    return incidents[:20]
+    nearby = [item for item in incidents if (item.miles or 0) <= 50]
+    if nearby:
+        return nearby[:20]
+    # Bay Area can sit just outside a 50 mi ring of the nearest active fire.
+    return incidents[:1]
 
 
 def _num(value: object) -> float | None:

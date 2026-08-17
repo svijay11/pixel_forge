@@ -32,6 +32,7 @@ export function useResultsMotion(root: RefObject<HTMLElement | null>, ready: boo
         gsap.set('.hero-title', { autoAlpha: 0, y: 28 })
         gsap.set('.hero-sub, .hero-cta, .hero-meta', { autoAlpha: 0, y: 20 })
         gsap.set('.gsap-card', { autoAlpha: 0, y: 32 })
+        gsap.set('#checklist .gsap-card', { autoAlpha: 1, y: 0 })
         gsap.set('.gsap-heading, .gsap-copy', { autoAlpha: 0, y: 24 })
         gsap.set('#cta-heading', { autoAlpha: 0, y: 36, scale: 0.97 })
         gsap.set('.hero-rule-path', { drawSVG: 0 })
