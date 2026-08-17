@@ -14,14 +14,20 @@ from .incidents import fetch_incidents
 from .knowledge import retrieve_for_parcel
 from .models import AssessResponse, Wind
 from .noaa import fetch_weather
-from .openrouter import generate_checklist, synthesize_brief, verify_checklist
+from .openrouter import (
+    _fallback_brief,
+    _fallback_checklist,
+    generate_checklist,
+    synthesize_brief,
+    verify_checklist,
+)
 
 logger = logging.getLogger(__name__)
 
 CacheKey = Tuple[str, float, float]
 _inflight: Dict[CacheKey, "asyncio.Future[AssessResponse]"] = {}
 _recent: Dict[CacheKey, Tuple[float, AssessResponse]] = {}
-_CACHE_TTL = 8.0
+_CACHE_TTL = 45.0
 
 
 def _cache_key(address: str, lat: float, lon: float) -> CacheKey:
@@ -46,8 +52,13 @@ async def run_assess(address: str, lat: float, lon: float) -> AssessResponse:
     try:
         result = await _run_assess(address, lat, lon)
         _recent[key] = (time.monotonic(), result)
-        future.set_result(result)
+        if not future.done():
+            future.set_result(result)
         return result
+    except asyncio.CancelledError:
+        if not future.done():
+            future.cancel()
+        raise
     except Exception as exc:
         if not future.done():
             future.set_exception(exc)
@@ -98,25 +109,42 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
     if not settings.openrouter_api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
-    brief, headline, beats = await synthesize_brief(
-        address=address,
-        lat=lat,
-        lon=lon,
-        hazard_zone=hazard_zone,
-        wind=wind,
-        alerts=alerts,
-        hotspots=hotspots,
-        incidents=incidents,
-    )
-    raw_items = await generate_checklist(
-        address=address,
-        hazard_zone=hazard_zone,
-        docs=docs,
-        wind=wind,
-        alerts=alerts,
-        hotspots=hotspots,
-        incidents=incidents,
-    )
+    try:
+        brief, headline, beats = await synthesize_brief(
+            address=address,
+            lat=lat,
+            lon=lon,
+            hazard_zone=hazard_zone,
+            wind=wind,
+            alerts=alerts,
+            hotspots=hotspots,
+            incidents=incidents,
+        )
+    except Exception as exc:
+        logger.warning("brief failed, using local copy: %s", exc)
+        brief, headline, beats = _fallback_brief(
+            address, hazard_zone, wind, alerts, hotspots, incidents
+        )
+    try:
+        raw_items = await generate_checklist(
+            address=address,
+            hazard_zone=hazard_zone,
+            docs=docs,
+            wind=wind,
+            alerts=alerts,
+            hotspots=hotspots,
+            incidents=incidents,
+        )
+    except Exception as exc:
+        logger.warning("checklist failed, using local copy: %s", exc)
+        raw_items = _fallback_checklist(
+            address=address,
+            hazard_zone=hazard_zone,
+            wind=wind,
+            alerts=alerts,
+            hotspots=hotspots,
+            incidents=incidents,
+        )
     checklist = verify_checklist(
         raw_items,
         docs,

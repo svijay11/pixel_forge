@@ -39,38 +39,40 @@ export type AssessResponse = {
   address?: string | null
 }
 
-export async function assessAddress(
-  input: {
-    address: string
-    lat: number
-    lon: number
-  },
-  signal?: AbortSignal,
-): Promise<AssessResponse> {
-  const timeout = AbortSignal.timeout(90_000)
-  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout
+export async function assessAddress(input: {
+  address: string
+  lat: number
+  lon: number
+}): Promise<AssessResponse> {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 70_000)
   let res: Response
   try {
     res = await fetch('/api/assess', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
-      signal: combined,
+      signal: controller.signal,
     })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
-      if (signal?.aborted) throw err
       throw new Error('Assessment timed out. Try the address again.')
     }
     throw err
+  } finally {
+    window.clearTimeout(timer)
   }
   if (!res.ok) {
     let detail = `Request failed (${res.status})`
     try {
-      const body = (await res.json()) as { detail?: string }
-      if (body.detail) detail = body.detail
+      const body = (await res.json()) as { detail?: unknown }
+      if (typeof body.detail === 'string' && body.detail.trim()) {
+        detail = body.detail
+      }
     } catch {
-      /* ignore */
+      if (res.status === 502 || res.status === 503) {
+        detail = 'The assess server is not running. Start the backend and try again.'
+      }
     }
     throw new Error(detail)
   }

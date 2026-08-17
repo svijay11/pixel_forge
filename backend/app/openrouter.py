@@ -5,7 +5,6 @@ import json
 import logging
 import re
 import time
-from typing import Optional
 
 import httpx
 
@@ -16,7 +15,6 @@ from .models import Alert, BriefBeat, ChecklistItem, Hotspot, Incident, Wind
 logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-_LLM_LOCK = asyncio.Lock()
 
 SYNTHESIS_SYSTEM = """You are Ember, a wildfire home-readiness copilot for California addresses.
 
@@ -31,21 +29,6 @@ Rules:
 {"headline": "one sentence unique to this address", "beats": [{"title": "short label", "body": "2-3 sentences"}]}
 - 3 beats. Prefer titles drawn from the data (Hazard zone, Wind, Nearby incident, Alerts, Satellite hotspots).
 """
-
-CHECKLIST_SYSTEM = """You generate a wildfire-readiness checklist for ONE California parcel at one moment in time.
-
-You may use Cal Fire / Ready for Wildfire chunks as the legal/safety HOW.
-You MUST instantiate every item with THIS parcel's live situation (address, zone, wind, alerts, named incidents and miles, hotspot distances).
-Rules:
-- Do not output a generic statewide list. If wind, alerts, or nearby fires differ, the items must differ.
-- Name real local facts in the item text: incident names, miles, wind speed/direction, alert event names, city/street from the address, hazard zone.
-- The HOW (clearance distances, go-bag contents, Zone 0/1/2 actions) must come from the retrieved chunks. Do not invent distances or legal requirements.
-- Do not predict fire spread. Do not issue evacuation orders.
-- Return JSON only, no markdown fences.
-- Keep each item and why under 140 characters so the JSON stays valid and complete.
-- 6 items. Mix focus values. Lead with "now" if there is an alert or an incident within 25 miles.
-"""
-
 
 def _prep_json_text(text: str) -> str:
     text = text.strip()
@@ -136,16 +119,6 @@ def _message_text(payload: dict) -> str:
     return ""
 
 
-def _corpus_blocks(docs: list[KnowledgeDoc], limit: int = 8) -> str:
-    blocks = []
-    for doc in docs[:limit]:
-        block = doc.as_prompt_block()
-        if len(block) > 1400:
-            block = block[:1400].rstrip() + "\n…"
-        blocks.append(block)
-    return "\n\n---\n\n".join(blocks) or "No retrieved documents."
-
-
 async def _generate(
     *,
     system: str,
@@ -165,56 +138,39 @@ async def _generate(
             {"role": "user", "content": user},
         ],
         "max_tokens": max_tokens,
+        "temperature": 0,
     }
-    delay = 4.0
-    last_error: Optional[Exception] = None
-    async with _LLM_LOCK:
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            for attempt in range(3):
-                started = time.monotonic()
-                try:
-                    response = await client.post(OPENROUTER_URL, headers=headers, json=body)
-                    if response.status_code == 429:
-                        raise httpx.HTTPStatusError(
-                            "rate limited",
-                            request=response.request,
-                            response=response,
-                        )
-                    response.raise_for_status()
-                    text = _message_text(response.json())
-                    logger.info(
-                        "OpenRouter ok in %.1fs (%s chars)",
-                        time.monotonic() - started,
-                        len(text),
-                    )
-                    if not text:
-                        raise RuntimeError("OpenRouter returned an empty response")
-                    return text
-                except httpx.HTTPStatusError as exc:
-                    last_error = exc
-                    status = exc.response.status_code if exc.response is not None else 0
-                    detail = ""
-                    if exc.response is not None:
-                        try:
-                            err = exc.response.json().get("error") or {}
-                            detail = err.get("message") or exc.response.text[:300]
-                        except Exception:
-                            detail = (exc.response.text or "")[:300]
-                    if status not in (429, 502, 503) or attempt == 2:
-                        raise RuntimeError(
-                            f"OpenRouter request failed ({status}): {detail or exc}",
-                        ) from exc
-                    logger.warning("OpenRouter %s, retrying in %.0fs", status, delay)
-                    await asyncio.sleep(delay)
-                    delay = min(delay * 2, 20)
-                except httpx.HTTPError as exc:
-                    last_error = exc
-                    if attempt == 2:
-                        raise RuntimeError(f"OpenRouter request failed: {exc}") from exc
-                    logger.warning("OpenRouter transport error, retrying in %.0fs", delay)
-                    await asyncio.sleep(delay)
-                    delay = min(delay * 2, 20)
-    raise RuntimeError("OpenRouter request failed after retries") from last_error
+    request_timeout = httpx.Timeout(connect=8.0, read=16.0, write=10.0, pool=5.0)
+    started = time.monotonic()
+    async with httpx.AsyncClient(timeout=request_timeout) as client:
+        try:
+            response = await client.post(
+                OPENROUTER_URL,
+                headers=headers,
+                json=body,
+                timeout=request_timeout,
+            )
+        except httpx.HTTPError as exc:
+            raise RuntimeError(f"OpenRouter request failed: {exc}") from exc
+        if response.status_code == 429:
+            raise RuntimeError("OpenRouter rate limited")
+        if response.status_code >= 400:
+            detail = (response.text or "")[:300]
+            try:
+                err = response.json().get("error") or {}
+                detail = err.get("message") or detail
+            except Exception:
+                pass
+            raise RuntimeError(f"OpenRouter request failed ({response.status_code}): {detail}")
+        text = _message_text(response.json())
+        logger.info(
+            "OpenRouter ok in %.1fs (%s chars)",
+            time.monotonic() - started,
+            len(text),
+        )
+        if not text:
+            raise RuntimeError("OpenRouter returned an empty response")
+        return text
 
 
 async def synthesize_brief(
@@ -242,11 +198,18 @@ async def synthesize_brief(
         "closestIncidentMiles": incidents[0].miles if incidents else None,
         "closestHotspotMiles": hotspots[0].miles if hotspots else None,
     }
-    raw = await _generate(
-        system=SYNTHESIS_SYSTEM,
-        user="Location data:\n" + json.dumps(payload, indent=2),
-        max_tokens=1100,
-    )
+    try:
+        raw = await asyncio.wait_for(
+            _generate(
+                system=SYNTHESIS_SYSTEM,
+                user="Location data:\n" + json.dumps(payload, indent=2),
+                max_tokens=700,
+            ),
+            timeout=22,
+        )
+    except Exception as exc:
+        logger.warning("brief generation skipped: %s", exc or type(exc).__name__)
+        return _fallback_brief(address, hazard_zone, wind, alerts, hotspots, incidents)
     try:
         data = _extract_json(raw)
         headline = str(data.get("headline") or "").strip()
@@ -264,6 +227,51 @@ async def synthesize_brief(
     except (json.JSONDecodeError, ValueError):
         pass
     return raw, "", []
+
+
+def _fallback_brief(
+    address: str,
+    hazard_zone: str,
+    wind: Wind,
+    alerts: list[Alert],
+    hotspots: list[Hotspot],
+    incidents: list[Incident],
+) -> tuple[str, str, list[BriefBeat]]:
+    street = address.split(",")[0].strip() if address else "This parcel"
+    nearest = incidents[0] if incidents else None
+    headline = f"{street}: live sources are in for this point."
+    beats = [
+        BriefBeat(
+            title="Hazard zone",
+            body=f"CAL FIRE maps this coordinate as {hazard_zone}."
+            if hazard_zone != "Unknown"
+            else "This point is not inside a mapped Fire Hazard Severity Zone polygon.",
+        ),
+        BriefBeat(
+            title="Nearby incident",
+            body=(
+                f"{nearest.name} is {nearest.miles} mi away"
+                + (f" in {nearest.county} County." if nearest.county else ".")
+            )
+            if nearest and nearest.miles is not None
+            else "CAL FIRE lists no active incidents within 50 miles.",
+        ),
+        BriefBeat(
+            title="Wind and alerts",
+            body=(
+                f"NOAA wind is {wind.speed or 'unreported'}"
+                + (f" {wind.direction}" if wind.direction else "")
+                + (
+                    f". Active alert: {alerts[0].event}."
+                    if alerts
+                    else ". No active NWS alerts at this point."
+                )
+                + (f" FIRMS counted {len(hotspots)} hotspots in 48h." if hotspots else "")
+            ),
+        ),
+    ]
+    brief = headline + "\n\n" + "\n\n".join(b.body for b in beats)
+    return brief, headline, beats
 
 
 def _fallback_checklist(
@@ -342,58 +350,8 @@ async def generate_checklist(
     hotspots: list[Hotspot],
     incidents: list[Incident],
 ) -> list[dict]:
-    corpus = _corpus_blocks(docs)
-    situation = {
-        "address": address,
-        "hazardZone": hazard_zone,
-        "wind": wind.model_dump(),
-        "alerts": [a.model_dump() for a in alerts[:6]],
-        "nearestIncidents": [
-            {"name": i.name, "county": i.county, "miles": i.miles, "acres": i.acres}
-            for i in incidents[:5]
-        ],
-        "hotspotCount48h": len(hotspots),
-        "closestHotspotMiles": hotspots[0].miles if hotspots else None,
-    }
-    raw = await _generate(
-        system=CHECKLIST_SYSTEM,
-        user=(
-            "Live situation for this parcel (must appear in the items):\n"
-            f"{json.dumps(situation, indent=2)}\n\n"
-            f"Retrieved Cal Fire / Ready for Wildfire guidance:\n{corpus}"
-        ),
-        max_tokens=2200,
-    )
-    try:
-        data = _extract_json(raw)
-        items = data.get("items") or []
-    except (json.JSONDecodeError, ValueError) as exc:
-        logger.warning("checklist JSON parse failed (%s); using local fallback", exc)
-        return _fallback_checklist(
-            address=address,
-            hazard_zone=hazard_zone,
-            wind=wind,
-            alerts=alerts,
-            hotspots=hotspots,
-            incidents=incidents,
-        )
-    out: list[dict] = []
-    for row in items:
-        if isinstance(row, str):
-            text = row.strip()
-            why = None
-            focus = None
-        elif isinstance(row, dict):
-            text = str(row.get("item") or "").strip()
-            why = str(row.get("why") or "").strip() or None
-            focus = str(row.get("focus") or "").strip().lower() or None
-            if focus not in ("now", "today", "property"):
-                focus = None
-        else:
-            continue
-        if text:
-            out.append({"item": text, "why": why, "focus": focus})
-    return out or _fallback_checklist(
+    logger.info("checklist using local parcel items")
+    return _fallback_checklist(
         address=address,
         hazard_zone=hazard_zone,
         wind=wind,

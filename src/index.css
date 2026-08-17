@@ -241,3 +241,42 @@
   transform-box: fill-box;
   transform-origin: center;
 }
+
+.wait-flip {
+  display: inline-block;
+  transform-origin: 50% 0%;
+  animation: wait-flip 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.wait-joke {
+  animation: wait-joke 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes wait-flip {
+  from {
+    opacity: 0.4;
+    transform: rotateX(-78deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateX(0deg);
+  }
+}
+
+@keyframes wait-joke {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-flip,
+  .wait-joke {
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Check, Flag } from 'lucide-react'
+import { WaitClock } from '@/components/WaitClock'
 import { Magnetic } from '@/components/Magnetic'
 import { Nav } from '@/components/Nav'
 import { StatCard } from '@/components/StatCard'
@@ -103,25 +104,24 @@ export function ResultsPage() {
       return
     }
 
-    const controller = new AbortController()
+    let cancelled = false
     setLoading(true)
     setError(null)
     setData(null)
-    void assessAddress({ address: query, lat: latitude, lon: longitude }, controller.signal)
+    void assessAddress({ address: query, lat: latitude, lon: longitude })
       .then((result) => {
-        if (!controller.signal.aborted) setData(result)
+        if (!cancelled) setData(result)
       })
       .catch((err: unknown) => {
-        if (controller.signal.aborted) return
-        if (err instanceof DOMException && err.name === 'AbortError') return
+        if (cancelled) return
         setError(err instanceof Error ? err.message : 'Assessment failed')
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
+        if (!cancelled) setLoading(false)
       })
 
     return () => {
-      controller.abort()
+      cancelled = true
     }
   }, [query, lat, lng])
 
@@ -222,16 +222,19 @@ export function ResultsPage() {
       ) : null}
 
       {loading ? (
-        <section className="bg-paper px-6 py-24 sm:px-10 lg:px-16">
+        <section className="bg-paper px-6 pb-20 pt-28 sm:px-10 sm:pt-36 md:pb-28 md:pt-44 lg:px-16">
           <div className="mx-auto max-w-[1280px]">
-            <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">LIVE PULL</p>
-            <h2 className="mt-3 max-w-xl font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink">
-              Pulling FIRMS, NOAA, and CAL FIRE for this parcel.
-            </h2>
-            <p className="mt-4 max-w-md font-sans text-[15px] text-muted-foreground">
-              Then writing a brief and a checklist that names what is actually around this house.
-              Usually 15–40 seconds.
-            </p>
+            <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:justify-between lg:gap-20">
+              <div className="max-w-xl">
+                <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
+                  LIVE PULL
+                </p>
+                <h2 className="mt-3 font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink md:text-[2.5rem]">
+                  Pulling FIRMS, NOAA, and CAL FIRE for this parcel.
+                </h2>
+              </div>
+              <WaitClock className="lg:ml-auto" />
+            </div>
           </div>
         </section>
       ) : null}
