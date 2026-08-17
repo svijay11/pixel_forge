@@ -25,9 +25,9 @@ Rules:
 - If a field is missing or empty, say that source returned no data.
 - Do not give evacuation orders. Point people to official alerts and local authorities when alerts are present.
 - Name the address, nearest incident, wind, and alerts when present so two different parcels cannot get the same brief.
-- Return JSON only, no markdown:
+- Reply with a single JSON object and nothing else. No planning, no notes, no markdown.
 {"headline": "one sentence unique to this address", "beats": [{"title": "short label", "body": "2-3 sentences"}]}
-- 3 beats. Prefer titles drawn from the data (Hazard zone, Wind, Nearby incident, Alerts, Satellite hotspots).
+- Exactly 3 beats. Titles from: Hazard zone, Wind, Nearby incident, Alerts, Satellite hotspots.
 """
 
 def _prep_json_text(text: str) -> str:
@@ -110,13 +110,7 @@ def _message_text(payload: dict) -> str:
             elif isinstance(item, str):
                 parts.append(item)
         content = "".join(parts)
-    text = (content or "").strip()
-    if text:
-        return text
-    reasoning = message.get("reasoning")
-    if isinstance(reasoning, str) and reasoning.strip():
-        return reasoning.strip()
-    return ""
+    return (content or "").strip()
 
 
 async def _generate(
@@ -139,6 +133,7 @@ async def _generate(
         ],
         "max_tokens": max_tokens,
         "temperature": 0,
+        "reasoning": {"effort": "low"},
     }
     request_timeout = httpx.Timeout(connect=8.0, read=16.0, write=10.0, pool=5.0)
     started = time.monotonic()
@@ -210,23 +205,41 @@ async def synthesize_brief(
     except Exception as exc:
         logger.warning("brief generation skipped: %s", exc or type(exc).__name__)
         return _fallback_brief(address, hazard_zone, wind, alerts, hotspots, incidents)
+    parsed = _brief_from_model(raw)
+    if parsed is not None:
+        return parsed
+    logger.warning("brief JSON unusable (%s chars); using local copy", len(raw))
+    return _fallback_brief(address, hazard_zone, wind, alerts, hotspots, incidents)
+
+
+_META_BRIEF = re.compile(
+    r"\b(produce json|we need to|let'?s craft|return json only|guidelines:|"
+    r"beats: hazard zone|could be \"|we can choose|we might want)\b",
+    re.IGNORECASE,
+)
+
+
+def _brief_from_model(raw: str) -> tuple[str, str, list[BriefBeat]] | None:
     try:
         data = _extract_json(raw)
-        headline = str(data.get("headline") or "").strip()
-        beats: list[BriefBeat] = []
-        for row in data.get("beats") or []:
-            if not isinstance(row, dict):
-                continue
-            title = str(row.get("title") or "").strip()
-            body = str(row.get("body") or "").strip()
-            if title and body:
-                beats.append(BriefBeat(title=title, body=body))
-        if headline and beats:
-            brief = headline + "\n\n" + "\n\n".join(b.body for b in beats)
-            return brief, headline, beats
     except (json.JSONDecodeError, ValueError):
-        pass
-    return raw, "", []
+        return None
+    headline = str(data.get("headline") or "").strip()
+    beats: list[BriefBeat] = []
+    for row in data.get("beats") or []:
+        if not isinstance(row, dict):
+            continue
+        title = str(row.get("title") or "").strip()
+        body = str(row.get("body") or "").strip()
+        if title and body:
+            beats.append(BriefBeat(title=title, body=body[:420]))
+    if not headline or len(beats) < 3:
+        return None
+    blob = " ".join([headline, *(b.title + " " + b.body for b in beats)])
+    if _META_BRIEF.search(blob) or any(len(b.body) > 500 for b in beats):
+        return None
+    brief = headline + "\n\n" + "\n\n".join(b.body for b in beats[:3])
+    return brief, headline, beats[:3]
 
 
 def _fallback_brief(
@@ -239,7 +252,15 @@ def _fallback_brief(
 ) -> tuple[str, str, list[BriefBeat]]:
     street = address.split(",")[0].strip() if address else "This parcel"
     nearest = incidents[0] if incidents else None
-    headline = f"{street}: live sources are in for this point."
+    if nearest and nearest.miles is not None:
+        headline = f"{street} is {nearest.miles} mi from the active {nearest.name}."
+    elif hotspots and hotspots[0].miles is not None:
+        headline = (
+            f"{street}: FIRMS counted {len(hotspots)} hotspot(s) in 48h, "
+            f"nearest {hotspots[0].miles} mi."
+        )
+    else:
+        headline = f"{street}: live sources returned no nearby incident."
     beats = [
         BriefBeat(
             title="Hazard zone",

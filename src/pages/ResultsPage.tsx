@@ -129,14 +129,7 @@ export function ResultsPage() {
   const beats = useMemo(() => {
     if (!data) return []
     if (data.beats && data.beats.length > 0) return data.beats
-    return data.riskBrief
-      .split(/\n\n+/)
-      .filter(Boolean)
-      .slice(0, 3)
-      .map((body, index) => ({
-        title: ['Situation', 'Conditions', 'What it means'][index] ?? 'Note',
-        body,
-      }))
+    return []
   }, [data])
   const checklistGroups = data ? groupChecklist(data.checklist) : []
   const stats = data ? snapshotStats(data) : []
