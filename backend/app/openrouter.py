@@ -9,8 +9,11 @@ import time
 import httpx
 
 from .config import settings
+from .geo import compass_point, initial_bearing_deg
 from .knowledge import KnowledgeDoc
 from .models import Alert, BriefBeat, ChecklistItem, Hotspot, Incident, Wind
+from .ors import escape_steps
+from .threat import ThreatAnchor
 
 logger = logging.getLogger(__name__)
 
@@ -303,8 +306,22 @@ def _fallback_checklist(
     alerts: list[Alert],
     hotspots: list[Hotspot],
     incidents: list[Incident],
+    threat: ThreatAnchor | None = None,
+    route_steps: list[str] | None = None,
+    home_lat: float | None = None,
+    home_lon: float | None = None,
 ) -> list[dict]:
     street = address.split(",")[0].strip() if address else "this parcel"
+    if threat and threat.ring and home_lat is not None and home_lon is not None:
+        return _proximity_checklist(
+            street=street,
+            threat=threat,
+            route_steps=route_steps or [],
+            alerts=alerts,
+            hazard_zone=hazard_zone,
+            home_lat=home_lat,
+            home_lon=home_lon,
+        )
     nearest = incidents[0] if incidents else None
     items: list[dict] = []
     if alerts:
@@ -377,6 +394,129 @@ def _fallback_checklist(
     return items[:7]
 
 
+def _row(item: str, why: str, focus: str) -> dict:
+    return {"item": item, "why": why, "focus": focus, "verified": True}
+
+
+def _proximity_checklist(
+    *,
+    street: str,
+    threat: ThreatAnchor,
+    route_steps: list[str],
+    alerts: list[Alert],
+    hazard_zone: str,
+    home_lat: float,
+    home_lon: float,
+) -> list[dict]:
+    fire = threat.label
+    miles = threat.miles
+    immediate = threat.ring == "immediate"
+    toward = initial_bearing_deg(home_lat, home_lon, threat.lat, threat.lon)
+    heading = compass_point((toward + 180) % 360)
+    ring_why = (
+        f"{fire} is {miles} mi from {street}. Rings are distance from the incident point, "
+        "not official evacuation zones. Local orders win."
+    )
+    route_why = (
+        f"First driving steps away from {fire}, not an official evacuation route. "
+        "If roads are closed, take the next open road in the same direction."
+    )
+    items: list[dict] = []
+    if alerts:
+        alert = alerts[0]
+        items.append(
+            _row(
+                f"Treat the {alert.event} at {street} as the official condition if it conflicts with this list.",
+                alert.headline or f"NOAA currently lists a {alert.event} at this point.",
+                "now",
+            ),
+        )
+    if immediate:
+        items.append(
+            _row(
+                f"In the next hour, leave {street}. {fire} is {miles} mi away — this house is inside the 5-mile immediate area.",
+                ring_why,
+                "now",
+            ),
+        )
+        if route_steps:
+            items.append(_row(f"Go now: {route_steps[0]}.", route_why, "now"))
+            if len(route_steps) > 1:
+                follow = route_steps[1]
+                if len(route_steps) > 2:
+                    follow = f"{route_steps[1]}, then {route_steps[2]}"
+                items.append(_row(f"Then {follow}.", route_why, "now"))
+        else:
+            items.append(
+                _row(
+                    f"Leave {street} heading {heading}, away from {fire}, and do not drive toward the smoke column.",
+                    f"No road-by-road path could be drawn from this point. {ring_why}",
+                    "now",
+                ),
+            )
+        items.append(
+            _row(
+                f"Take people, pets, phones, medicines, and the go-bag from {street} as you walk out — not later today.",
+                "Ready for Wildfire: a go-bag is for leaving, not for packing after the roads clog.",
+                "today",
+            ),
+        )
+        items.append(
+            _row(
+                f"If you cannot leave {street} this hour, stay in the most interior room, watch official channels, and leave the moment a road is open {heading}.",
+                ring_why,
+                "property",
+            ),
+        )
+        return items[:7]
+
+    items.append(
+        _row(
+            f"In the next 1–3 hours, be ready to leave {street}. {fire} is {miles} mi away — this house is inside the 15-mile elevated area.",
+            ring_why,
+            "now",
+        ),
+    )
+    if route_steps:
+        first = route_steps[0]
+        follow = ""
+        if len(route_steps) > 1:
+            follow = f" Then {route_steps[1]}"
+            if len(route_steps) > 2:
+                follow += f", then {route_steps[2]}"
+        items.append(
+            _row(
+                f"If you leave today, start from {street}: {first}.{follow}.",
+                route_why,
+                "today",
+            ),
+        )
+    else:
+        items.append(
+            _row(
+                f"If you leave today, drive {heading} away from {fire} and keep a second road in mind.",
+                f"No road-by-road path could be drawn from this point. {ring_why}",
+                "today",
+            ),
+        )
+    items.append(
+        _row(
+            f"By this afternoon, stage a go-bag at the door of {street}: 3-day food, 3 gallons of water per person, people, pets, and meds.",
+            "Ready for Wildfire treats a staged go-bag as the difference between leaving and getting stuck.",
+            "today",
+        ),
+    )
+    zone_label = hazard_zone if hazard_zone != "Unknown" else "this"
+    items.append(
+        _row(
+            f"Keep 100 feet of defensible space on the {zone_label} hazard-zone lot at {street}, or to the property line.",
+            "CAL FIRE / PRC 4291 requires 100 feet of defensible space where it applies.",
+            "property",
+        ),
+    )
+    return items[:7]
+
+
 async def generate_checklist(
     *,
     address: str,
@@ -386,8 +526,21 @@ async def generate_checklist(
     alerts: list[Alert],
     hotspots: list[Hotspot],
     incidents: list[Incident],
+    lat: float,
+    lon: float,
+    threat: ThreatAnchor | None = None,
 ) -> list[dict]:
-    logger.info("checklist using local parcel items")
+    route_steps: list[str] = []
+    if threat and threat.ring:
+        route_steps = await escape_steps(lat, lon, threat.lat, threat.lon)
+        logger.info(
+            "checklist proximity ring=%s fire=%s steps=%s",
+            threat.ring,
+            threat.label,
+            len(route_steps),
+        )
+    else:
+        logger.info("checklist using local parcel items")
     return _fallback_checklist(
         address=address,
         hazard_zone=hazard_zone,
@@ -395,6 +548,10 @@ async def generate_checklist(
         alerts=alerts,
         hotspots=hotspots,
         incidents=incidents,
+        threat=threat,
+        route_steps=route_steps,
+        home_lat=lat,
+        home_lon=lon,
     )
 
 
@@ -437,7 +594,7 @@ def verify_checklist(
         words = [w for w in re.findall(r"[a-z0-9]{4,}", item.lower()) if w not in skip]
         guidance_hits = sum(1 for word in words if word in guidance_tokens)
         live_hits = sum(1 for word in re.findall(r"[a-z0-9]{3,}", item.lower()) if word in live_tokens)
-        verified = guidance_hits >= 2 or live_hits >= 1
+        verified = bool(row.get("verified")) or guidance_hits >= 2 or live_hits >= 1
         verified_items.append(
             ChecklistItem(
                 item=item,

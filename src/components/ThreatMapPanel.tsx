@@ -4,7 +4,7 @@ import bbox from '@turf/bbox'
 import circle from '@turf/circle'
 import { X, House, Flame } from 'lucide-react'
 import type { ThreatAnchor } from '@/lib/threatAnchor'
-import { escapeDestination, fetchDrivingRoute } from '@/lib/escapeRoute'
+import { fetchEscapeRoute } from '@/lib/escapeRoute'
 
 const RING_MONITOR = '#6E9B6B'
 const RING_ELEVATED = '#FF7A3D'
@@ -129,8 +129,7 @@ export function ThreatMapPanel({
         .addTo(map)
       layers.push(fireMarker)
 
-      const dest = escapeDestination(home, threatAnchor)
-      const geometry = await fetchDrivingRoute(home, dest)
+      const geometry = await fetchEscapeRoute(home, threatAnchor)
       if (cancelled) return
       if (geometry) {
         const route = L.geoJSON(geometry, {
@@ -154,6 +153,7 @@ export function ThreatMapPanel({
         [minY, minX],
         [maxY, maxX],
         [home.lat, home.lon],
+        [threatAnchor.lat, threatAnchor.lon],
       ])
       map.fitBounds(bounds, { padding: [48, 48], maxZoom: 11, animate: true })
     }

@@ -1,5 +1,6 @@
 import { type RefObject } from 'react'
 import { gsap, Observer, ScrollTrigger, SplitText, useGSAP } from '@/lib/gsap'
+import { animateDithers, riseKickers } from '@/hooks/motionFx'
 
 function formatStat(value: number, format: string, suffix: string) {
   const body = format === 'comma' ? value.toLocaleString('en-US') : String(value)
@@ -17,7 +18,7 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
 
       mm.add('(prefers-reduced-motion: reduce)', () => {
         gsap.set(
-          '.hero-title, .hero-lead, .hero-cta, .hero-stage, .hero-rule, .gsap-heading, .gsap-copy, .gsap-card, .gsap-faq, .stat-value, .js-scramble',
+          '.hero-title, .hero-lead, .hero-cta, .hero-stage, .hero-rule, .gsap-heading, .gsap-copy, .gsap-card, .gsap-rise, .gsap-faq, .gsap-kicker, .stat-value, .js-scramble, .how-step-tab',
           { autoAlpha: 1, y: 0, x: 0, scale: 1, clearProps: 'transform' },
         )
         rootEl.querySelectorAll<HTMLElement>('.stat-value').forEach((el) => {
@@ -34,8 +35,9 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
         const rule = rootEl.querySelector<SVGPathElement>('.hero-rule-path')
 
         gsap.set('.hero-cta, .hero-stage', { autoAlpha: 0, y: 28 })
-        gsap.set('.gsap-card, .gsap-faq', { autoAlpha: 0, y: 32 })
-        gsap.set('.gsap-heading, .gsap-copy', { autoAlpha: 0, y: 24 })
+        gsap.set('.gsap-card, .gsap-rise, .gsap-faq', { autoAlpha: 0, y: 32 })
+        gsap.set('.how-step-tab', { autoAlpha: 0, y: 16 })
+        gsap.set('.gsap-heading, .gsap-copy, .gsap-kicker', { autoAlpha: 0, y: 24 })
         gsap.set('#cta-heading', { autoAlpha: 0, y: 36, scale: 0.97 })
         gsap.set('.hero-rule-path', { drawSVG: 0 })
 
@@ -63,6 +65,17 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
         intro
           .to('.hero-cta', { autoAlpha: 1, y: 0, duration: 0.65 }, 0.55)
           .to('.hero-stage', { autoAlpha: 1, y: 0, duration: 0.9 }, 0.68)
+
+        gsap.to('.hero-lead', {
+          y: -36,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#hero',
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 0.5,
+          },
+        })
 
         if (rule) {
           gsap.fromTo(
@@ -103,13 +116,18 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
         }
 
         gsap.utils.toArray<HTMLElement>('.gsap-heading').forEach((heading) => {
-          gsap.to(heading, {
-            y: 0,
-            autoAlpha: 1,
-            duration: 0.8,
-            ease: 'emberOut',
-            scrollTrigger: { trigger: heading, start: 'top 86%', once: true },
-          })
+          gsap.fromTo(
+            heading,
+            { y: 28, x: -16, autoAlpha: 0 },
+            {
+              y: 0,
+              x: 0,
+              autoAlpha: 1,
+              duration: 0.9,
+              ease: 'emberOut',
+              scrollTrigger: { trigger: heading, start: 'top 86%', once: true },
+            },
+          )
         })
 
         gsap.utils.toArray<HTMLElement>('.gsap-copy').forEach((copy) => {
@@ -148,7 +166,7 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
           })
         })
 
-        const batch = gsap.utils.toArray<HTMLElement>('.gsap-card, .gsap-faq')
+        const batch = gsap.utils.toArray<HTMLElement>('.gsap-card, .gsap-rise, .gsap-faq')
         if (batch.length) {
           ScrollTrigger.batch(batch, {
             start: 'top 88%',
@@ -185,8 +203,8 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
         )
 
         gsap.fromTo(
-          '.how-step-n',
-          { y: 18, autoAlpha: 0 },
+          '.how-step-tab',
+          { y: 16, autoAlpha: 0 },
           {
             y: 0,
             autoAlpha: 1,
@@ -196,6 +214,9 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
             scrollTrigger: { trigger: '#how', start: 'top 72%', once: true },
           },
         )
+
+        riseKickers(rootEl)
+        animateDithers(rootEl)
 
         const cleanups: Array<() => void> = []
 

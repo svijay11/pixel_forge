@@ -1,15 +1,16 @@
 import bearing from '@turf/bearing'
 import destination from '@turf/destination'
 
-const ESCAPE_MILES = 40
+const ESCAPE_TRIES_MILES = [40, 25, 12]
 
 export function escapeDestination(
   home: { lat: number; lon: number },
   threat: { lat: number; lon: number },
+  miles = 40,
 ) {
   const toward = bearing([home.lon, home.lat], [threat.lon, threat.lat])
   const away = toward + 180
-  const point = destination([home.lon, home.lat], ESCAPE_MILES, away, {
+  const point = destination([home.lon, home.lat], miles, away, {
     units: 'miles',
   })
   const [lon, lat] = point.geometry.coordinates
@@ -38,4 +39,16 @@ export async function fetchDrivingRoute(
   } catch {
     return null
   }
+}
+
+export async function fetchEscapeRoute(
+  home: { lat: number; lon: number },
+  threat: { lat: number; lon: number },
+): Promise<GeoJSON.LineString | null> {
+  for (const miles of ESCAPE_TRIES_MILES) {
+    const dest = escapeDestination(home, threat, miles)
+    const geometry = await fetchDrivingRoute(home, dest)
+    if (geometry) return geometry
+  }
+  return null
 }

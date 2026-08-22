@@ -27,7 +27,9 @@ function streetLine(query: string | null) {
   return query.split(',').slice(0, 2).join(',').trim()
 }
 
-function focusLabel(focus: string | null | undefined) {
+function focusLabel(focus: string | null | undefined, ring?: string | null) {
+  if (focus === 'now' && ring === 'immediate') return 'Next hour'
+  if (focus === 'now' && ring === 'elevated') return 'Next few hours'
   if (focus === 'now') return 'Now'
   if (focus === 'today') return 'Today'
   return 'Property'
@@ -367,7 +369,10 @@ export function ResultsPage() {
                   ) : (
                     <ul>
                       {data.alerts.map((alert) => (
-                        <li key={alert.headline ?? alert.event} className="border-b border-line px-5 py-4 last:border-b-0">
+                        <li
+                          key={alert.headline ?? alert.event}
+                          className="border-b border-line px-5 py-4 last:border-b-0"
+                        >
                           <p className="font-sans text-sm text-ink">{alert.event}</p>
                           <p className="mt-1 font-sans text-[13px] text-muted-foreground">
                             {alert.severity ? `${alert.severity} · ` : ''}
@@ -392,23 +397,39 @@ export function ResultsPage() {
                 id="list-heading"
                 className="gsap-heading max-w-3xl font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink md:text-[2.75rem]"
               >
-                A list for this house, in this weather, with these fires.
+                {data.threatRing === 'immediate'
+                  ? `Leave ${streetLine(query)} in the next hour.`
+                  : data.threatRing === 'elevated'
+                    ? `Be ready to leave ${streetLine(query)} in the next few hours.`
+                    : 'A list for this house, in this weather, with these fires.'}
               </h2>
               <p className="gsap-copy mt-5 max-w-xl font-sans text-[17px] leading-[1.7] text-[#555555]">
-                Actions come from Cal Fire guidance. The wording is tied to this parcel’s zone,
-                wind, alerts, and named incidents.
+                {data.threatRing === 'immediate'
+                  ? `This house is inside the 5-mile immediate area of ${data.threatLabel}. The first steps are a driving path away from that fire — not an official evacuation order.`
+                  : data.threatRing === 'elevated'
+                    ? `This house is inside the 15-mile elevated area of ${data.threatLabel}. Have a way out this afternoon. Local orders still win.`
+                    : 'Actions come from Cal Fire guidance. The wording is tied to this parcel’s zone, wind, alerts, and named incidents.'}
               </p>
               <div className="mt-16 space-y-14">
                 {checklistGroups.map((group) => (
                   <div key={group.key}>
                     <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground">
-                      {focusLabel(group.key).toUpperCase()}
+                      {focusLabel(group.key, data.threatRing).toUpperCase()}
                     </p>
                     <ol className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {group.items.map((row, index) => (
                         <li key={row.item} className="gsap-card h-full rounded-2xl bg-paper px-6 py-8">
                           <div className="flex items-start justify-between gap-3">
-                            <p className="how-step-n font-display text-3xl font-normal text-sage">
+                            <p
+                              className={cn(
+                                'how-step-n font-display text-3xl font-normal',
+                                group.key === 'now' && data.threatRing === 'immediate'
+                                  ? 'text-alert'
+                                  : group.key === 'now' && data.threatRing === 'elevated'
+                                    ? 'text-ember'
+                                    : 'text-sage',
+                              )}
+                            >
                               {String(index + 1).padStart(2, '0')}
                             </p>
                             {row.verified ? (

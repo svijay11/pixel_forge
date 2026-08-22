@@ -17,9 +17,9 @@
   --color-paper: #ffffff;
   --color-line: #e6e6e3;
 
-  --font-display: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Palatino Linotype', Palatino, 'Book Antiqua', ui-serif, serif;
+  --font-sans: 'Palatino Linotype', Palatino, 'Book Antiqua', ui-serif, serif;
+  --font-mono: 'Palatino Linotype', Palatino, 'Book Antiqua', ui-serif, serif;
 }
 
 :root {
@@ -163,8 +163,28 @@
   }
 }
 
+.source-live-ring {
+  animation: source-live 2.2s ease-out infinite;
+}
+
+@keyframes source-live {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hotspot-ring {
+    animation: none;
+    opacity: 0;
+  }
+
+  .source-live-ring {
     animation: none;
     opacity: 0;
   }
@@ -184,7 +204,7 @@
 .leaflet-control-attribution {
   background: transparent !important;
   color: #8b93a0 !important;
-  font-family: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', ui-serif, serif;
   font-size: 10px;
 }
 
@@ -231,7 +251,7 @@
 }
 
 .threat-map .leaflet-popup-content {
-  font-family: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', ui-serif, serif;
   font-size: 13px;
   margin: 10px 12px;
 }
@@ -274,10 +294,73 @@
 }
 
 .gsap-card,
+.gsap-rise,
 .gsap-heading,
 .gsap-copy,
 .hero-stage {
   will-change: transform, opacity;
+}
+
+.ember-dither {
+  position: absolute;
+  inset: auto 0 0;
+  height: 48%;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M4.5 1.2v7.6M1.2 4.5h7.6' stroke='%236e9b6b' stroke-width='1.2' stroke-linecap='square'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 9px 9px;
+}
+
+.ember-dither-fade {
+  -webkit-mask-image: linear-gradient(to top, #000 12%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 12%, transparent 100%);
+}
+
+.ember-dither-wave {
+  -webkit-mask-image: linear-gradient(158deg, transparent 22%, #000 70%);
+  mask-image: linear-gradient(158deg, transparent 22%, #000 70%);
+}
+
+.ember-dither-bloom {
+  -webkit-mask-image: radial-gradient(95% 80% at 78% 110%, #000 18%, transparent 68%);
+  mask-image: radial-gradient(95% 80% at 78% 110%, #000 18%, transparent 68%);
+}
+
+.glyph-bar {
+  position: relative;
+  height: 1.15em;
+  overflow: hidden;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  user-select: none;
+}
+
+.glyph-bar-track,
+.glyph-bar-fill {
+  display: block;
+  white-space: nowrap;
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', ui-serif, serif;
+}
+
+.glyph-bar-track {
+  color: #deded9;
+}
+
+.glyph-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  overflow: hidden;
+  color: #c5c5be;
+}
+
+.glyph-bar-accent .glyph-bar-fill {
+  color: #6e9b6b;
+}
+
+.compare-row-active {
+  background: rgb(183 209 136 / 0.18);
 }
 
 .ember-pixel {

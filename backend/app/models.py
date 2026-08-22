@@ -79,3 +79,5 @@ class AssessResponse(BaseModel):
     wind: Wind
     alerts: List[Alert] = Field(default_factory=list)
     address: Optional[str] = None
+    threatRing: Optional[str] = None
+    threatLabel: Optional[str] = None

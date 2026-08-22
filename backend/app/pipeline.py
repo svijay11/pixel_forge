@@ -21,6 +21,7 @@ from .openrouter import (
     synthesize_brief,
     verify_checklist,
 )
+from .threat import pick_threat_anchor
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,7 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
         brief, headline, beats = _fallback_brief(
             address, hazard_zone, wind, alerts, hotspots, incidents
         )
+    threat = pick_threat_anchor(incidents, hotspots, lat, lon)
     try:
         raw_items = await generate_checklist(
             address=address,
@@ -134,6 +136,9 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
             alerts=alerts,
             hotspots=hotspots,
             incidents=incidents,
+            lat=lat,
+            lon=lon,
+            threat=threat,
         )
     except Exception as exc:
         logger.warning("checklist failed, using local copy: %s", exc)
@@ -144,6 +149,9 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
             alerts=alerts,
             hotspots=hotspots,
             incidents=incidents,
+            threat=threat,
+            home_lat=lat,
+            home_lon=lon,
         )
     checklist = verify_checklist(
         raw_items,
@@ -168,4 +176,6 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
         wind=wind,
         alerts=alerts,
         address=address,
+        threatRing=threat.ring if threat else None,
+        threatLabel=threat.label if threat else None,
     )

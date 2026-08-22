@@ -1,35 +1,19 @@
 import { useCallback, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Crosshair, House, ListChecks } from 'lucide-react'
 import { Magnetic } from '@/components/Magnetic'
 import { Nav } from '@/components/Nav'
 import SplitText from '@/components/SplitText'
 import { ProductWorkspace } from '@/components/ProductWorkspace'
-import { StatCard } from '@/components/StatCard'
+import { DitherCard } from '@/components/DitherCard'
+import { HowStepper } from '@/components/HowStepper'
+import { SourceFeeds } from '@/components/SourceFeeds'
 import { Wordmark } from '@/components/Wordmark'
 import { Button } from '@/components/ui/button'
-import { STATS } from '@/data/stats'
 import { CA_CENTER } from '@/data/hotspots'
 import { formatCoord } from '@/lib/mapStyle'
 import { gsap, useGSAP } from '@/lib/gsap'
 import { useLandingMotion } from '@/hooks/useLandingMotion'
-
-const STEPS = [
-  {
-    n: '01',
-    title: 'Enter your address',
-    body: 'Pin your home on the same heat-detection map used for live satellite fire feeds.',
-  },
-  {
-    n: '02',
-    title: 'Get a synthesized risk brief',
-    body: 'Nearby detections, vegetation, slope, and access — in one read for that structure.',
-  },
-  {
-    n: '03',
-    title: 'Get a grounded action checklist',
-    body: 'Work for this house, in order. Not a generic preparedness dump.',
-  },
-]
 
 const BRIEF_ITEMS = [
   { label: 'Nearby satellite hotspots', tag: 'FIRMS' },
@@ -40,31 +24,49 @@ const BRIEF_ITEMS = [
 
 const FEATURES = [
   {
-    title: 'Detections, not a blog post.',
+    title: 'Detections, not a blog post',
     body: 'The brief starts from live heat detections and local conditions. If a source is missing, we say so instead of filling the gap with generic advice.',
+    icon: Crosshair,
+    dither: 'fade' as const,
   },
   {
-    title: 'Written for one address.',
+    title: 'Written for one address',
     body: 'Vegetation, slope, and access change from lot to lot. The output is for the structure you entered, not for “California homeowners.”',
+    icon: House,
+    dither: 'wave' as const,
   },
   {
-    title: 'A list you can finish.',
+    title: 'A list you can finish',
     body: 'The checklist is short, ordered, and specific to the house. It is meant to be done, not saved in a tab.',
+    icon: ListChecks,
+    dither: 'bloom' as const,
   },
 ]
 
-const SOURCES = [
+const YEAR_METRICS = [
   {
-    name: 'NASA FIRMS',
-    body: 'VIIRS and MODIS hotspot detections — the same satellite fire feed used by incident teams.',
+    kicker: 'Acres',
+    value: 525223,
+    format: 'comma' as const,
+    suffix: '',
+    title: 'Burned in California',
+    detail: 'Statewide 2025 total from Cal Fire / NIFC — the year sitting behind every brief.',
   },
   {
-    name: 'NOAA',
-    body: 'Weather and fuel-moisture context that changes how detections should be read.',
+    kicker: 'Structures',
+    value: 16512,
+    format: 'comma' as const,
+    suffix: '',
+    title: 'Lost this year',
+    detail: 'Homes and buildings gone in 2025. Ember is for the ones still standing.',
   },
   {
-    name: 'Cal Fire',
-    body: 'Incident records and structure-loss statistics used to ground the statewide picture.',
+    kicker: 'WUI',
+    value: 14,
+    format: 'plain' as const,
+    suffix: 'M',
+    title: 'Californians in the wildland-urban interface',
+    detail: 'About one in three people. The address you enter is how Ember gets specific.',
   },
 ]
 
@@ -216,7 +218,7 @@ export function LandingPage() {
           className="bg-paper px-6 py-24 sm:px-10 md:py-32 lg:px-16"
           aria-labelledby="gap-heading"
         >
-          <div className="mx-auto grid max-w-[1280px] items-start gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
+          <div className="mx-auto grid max-w-[1280px] items-start gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-20">
             <div>
               <h2
                 id="gap-heading"
@@ -229,59 +231,52 @@ export function LandingPage() {
                 site conditions into a brief and a checklist for one address.
               </p>
             </div>
-            <div className="gsap-card overflow-hidden rounded-[28px] border border-line bg-canvas">
-              <div className="flex items-center justify-between border-b border-line px-5 py-4">
-                <p className="font-display text-lg text-ink">What the brief covers</p>
-                <span className="rounded-full bg-paper px-3 py-1 font-sans text-xs text-muted-foreground">
-                  {BRIEF_ITEMS.length} items
-                </span>
-              </div>
-              <ul>
-                {BRIEF_ITEMS.map((item, i) => (
-                  <li
-                    key={item.label}
-                    className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 last:border-b-0"
-                  >
-                    <span className="font-sans text-sm text-ink">
-                      <span className="mr-3 font-mono text-[11px] text-muted-foreground">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      {item.label}
+            <ol className="gsap-rise">
+              {BRIEF_ITEMS.map((item, i) => (
+                <li
+                  key={item.label}
+                  className="flex items-baseline justify-between gap-6 border-t border-line py-4 first:border-t-0 first:pt-0"
+                >
+                  <span className="font-sans text-[15px] text-ink">
+                    <span className="mr-3 font-mono text-[11px] text-muted-foreground">
+                      {String(i + 1).padStart(2, '0')}
                     </span>
-                    <span className="shrink-0 rounded-full bg-paper px-2.5 py-1 font-mono text-[10px] tracking-wide text-muted-foreground">
-                      {item.tag}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                    {item.label}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] tracking-[0.12em] text-muted-foreground">
+                    {item.tag}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
         <section
-          className="bg-mist px-6 py-24 sm:px-10 md:py-32 lg:px-16"
+          className="bg-canvas px-6 py-24 sm:px-10 md:py-32 lg:px-16"
           aria-labelledby="features-heading"
         >
           <div className="mx-auto max-w-[1280px]">
-            <h2
-              id="features-heading"
-              className="gsap-heading max-w-3xl font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink md:text-[2.75rem]"
-            >
-              Built to close the gap between a detection and a decision.
-            </h2>
-            <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="gsap-kicker font-mono text-[11px] tracking-[0.18em] text-sage-monitor">
+                BUILT FOR ONE HOUSE
+              </p>
+              <h2
+                id="features-heading"
+                className="gsap-heading mt-4 font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink md:text-[2.75rem]"
+              >
+                Built to close the gap between a detection and a decision.
+              </h2>
+            </div>
+            <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-7">
               {FEATURES.map((feature) => (
-                <article
+                <DitherCard
                   key={feature.title}
-                  className="gsap-card h-full rounded-2xl bg-paper px-6 py-8"
-                >
-                  <h3 className="font-display text-xl font-normal tracking-[-0.01em] text-ink">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-4 font-sans text-[15px] leading-relaxed text-muted-foreground">
-                    {feature.body}
-                  </p>
-                </article>
+                  icon={feature.icon}
+                  title={feature.title}
+                  body={feature.body}
+                  dither={feature.dither}
+                />
               ))}
             </div>
           </div>
@@ -289,7 +284,7 @@ export function LandingPage() {
 
         <section
           id="data"
-          className="bg-obsidian px-6 py-24 sm:px-10 md:py-32 lg:px-16"
+          className="bg-paper px-6 py-24 sm:px-10 md:py-32 lg:px-16"
           aria-labelledby="stats-heading"
         >
           <div className="mx-auto max-w-[1280px]">
@@ -300,20 +295,62 @@ export function LandingPage() {
             >
               CALIFORNIA 2025
             </p>
-            <h2 className="gsap-heading mb-10 max-w-2xl font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-warm md:text-[2.75rem]">
+            <h2 className="gsap-heading mb-10 max-w-2xl font-display text-[2rem] font-normal leading-[1.12] tracking-[-0.01em] text-ink md:text-[2.75rem]">
               The year, in numbers.
             </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {STATS.map((stat) => (
-                <StatCard key={stat.id} stat={stat} tone="dark" />
-              ))}
+            <div className="gsap-rise overflow-hidden rounded-[18px] border border-line bg-paper">
+              <div className="grid grid-cols-1 lg:grid-cols-4">
+                <div className="flex flex-col border-b border-line p-6 sm:p-8 lg:border-b-0 lg:border-r">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-ash">
+                      EXAMPLE: ONE PARCEL
+                    </p>
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-ash">LIVE SOURCES</p>
+                  </div>
+                  <div className="mt-6 rounded-[12px] bg-muted px-4 py-4 font-mono text-[12px] leading-[1.7] text-ink/75">
+                    FIRMS · VIIRS / MODIS
+                    <br />
+                    NOAA · weather.gov
+                    <br />
+                    CAL FIRE · named incidents
+                  </div>
+                  <p className="mt-auto pt-6 font-sans text-[13px] leading-relaxed text-ash">
+                    200,000+ evacuated in the January 2025 LA fires alone. Ember starts at the
+                    address, not the statewide dump.
+                  </p>
+                </div>
+                {YEAR_METRICS.map((metric) => (
+                  <div
+                    key={metric.kicker}
+                    className="flex flex-col border-b border-line p-6 last:border-b-0 sm:p-8 lg:border-b-0 lg:border-r lg:last:border-r-0"
+                  >
+                    <p className="font-mono text-[10px] tracking-[0.16em] text-ash">
+                      {metric.kicker.toUpperCase()}
+                    </p>
+                    <p
+                      className="stat-value mt-5 font-display text-[2.35rem] font-bold leading-none tracking-tight text-sage-monitor tabular-nums sm:text-[2.75rem]"
+                      data-value={metric.value}
+                      data-format={metric.format}
+                      data-suffix={metric.suffix}
+                    >
+                      0{metric.suffix}
+                    </p>
+                    <p className="mt-4 font-display text-[1.05rem] font-bold leading-snug text-ink">
+                      {metric.title}
+                    </p>
+                    <p className="mt-3 font-sans text-[13px] leading-relaxed text-ash">
+                      {metric.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <section
           id="how"
-          className="bg-paper px-6 py-24 sm:px-10 md:py-32 lg:px-16"
+          className="border-t border-line bg-mist px-6 py-24 sm:px-10 md:py-32 lg:px-16"
           aria-labelledby="how-heading"
         >
           <div className="mx-auto max-w-[1280px]">
@@ -323,19 +360,7 @@ export function LandingPage() {
             >
               How it works
             </h2>
-            <ol className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3">
-              {STEPS.map((step) => (
-                <li key={step.n} className="gsap-card h-full rounded-2xl bg-canvas px-6 py-8">
-                  <p className="how-step-n font-display text-3xl font-normal text-sage">{step.n}</p>
-                  <h3 className="mt-5 font-display text-xl font-normal tracking-[-0.01em] text-ink">
-                    {step.title}
-                  </h3>
-                  <p className="mt-3 max-w-sm font-sans text-[15px] leading-relaxed text-muted-foreground">
-                    {step.body}
-                  </p>
-                </li>
-              ))}
-            </ol>
+            <HowStepper />
           </div>
         </section>
 
@@ -350,19 +375,7 @@ export function LandingPage() {
             >
               Named sources, not a black box.
             </h2>
-            <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3">
-              {SOURCES.map((source) => (
-                <article
-                  key={source.name}
-                  className="gsap-card h-full rounded-2xl border border-line bg-paper px-6 py-7"
-                >
-                  <h3 className="font-display text-lg font-normal text-ink">{source.name}</h3>
-                  <p className="mt-3 font-sans text-[15px] leading-relaxed text-muted-foreground">
-                    {source.body}
-                  </p>
-                </article>
-              ))}
-            </div>
+            <SourceFeeds />
           </div>
         </section>
 

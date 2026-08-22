@@ -40,6 +40,8 @@ export type AssessResponse = {
     severity?: string | null
   }>
   address?: string | null
+  threatRing?: 'immediate' | 'elevated' | null
+  threatLabel?: string | null
 }
 
 export async function assessAddress(input: {

@@ -27,20 +27,29 @@ function milesBetween(
   lon: number,
   reported?: number | null,
 ) {
-  if (reported != null && Number.isFinite(reported)) return reported
-  return haversineMiles(home.lat, home.lon, lat, lon)
+  const fromCoords = haversineMiles(home.lat, home.lon, lat, lon)
+  if (reported != null && Number.isFinite(reported) && Math.abs(reported - fromCoords) < 25) {
+    return reported
+  }
+  return fromCoords
+}
+
+function plausiblePoint(lat: number, lon: number) {
+  return lat >= 32 && lat <= 42.6 && lon >= -125 && lon <= -113
 }
 
 export function pickThreatAnchor(
   data: Pick<AssessResponse, 'nearbyIncidents' | 'nearbyHotspots'>,
   home: { lat: number; lon: number },
 ): ThreatAnchor | null {
+  let nearestIncident: ThreatAnchor | null = null
   for (const incident of data.nearbyIncidents) {
     if (incident.lat == null || incident.lon == null) continue
     if (incident.active === false) continue
+    if (!plausiblePoint(incident.lat, incident.lon)) continue
     const miles = milesBetween(home, incident.lat, incident.lon, incident.miles)
-    if (miles <= THREAT_RADIUS_MILES) {
-      return {
+    if (!nearestIncident || miles < nearestIncident.miles) {
+      nearestIncident = {
         kind: 'incident',
         lat: incident.lat,
         lon: incident.lon,
@@ -49,9 +58,11 @@ export function pickThreatAnchor(
       }
     }
   }
+  if (nearestIncident) return nearestIncident
 
   let nearest: ThreatAnchor | null = null
   for (const hotspot of data.nearbyHotspots) {
+    if (!plausiblePoint(hotspot.lat, hotspot.lon)) continue
     const miles = milesBetween(home, hotspot.lat, hotspot.lon, hotspot.miles)
     if (miles > THREAT_RADIUS_MILES) continue
     if (!nearest || miles < nearest.miles) {
