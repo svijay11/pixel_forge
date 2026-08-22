@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -14,6 +16,7 @@ class Settings:
     contact_email: str
     openrouter_model: str
     frontend_origin: str
+    serve_frontend: bool
     fhsz_path: Path
     knowledge_dir: Path
 
@@ -30,10 +33,23 @@ class Settings:
             "openai/gpt-oss-20b:free",
         )
         self.frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+        self.serve_frontend = os.getenv("SERVE_FRONTEND", "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         self.fhsz_path = Path(
             os.getenv("FHSZ_PATH", str(BACKEND_ROOT / "data" / "fhsz.geojson")),
         )
         self.knowledge_dir = BACKEND_ROOT / "knowledge"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = [item.strip() for item in self.frontend_origin.split(",") if item.strip()]
+        for origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+            if origin not in origins:
+                origins.append(origin)
+        return origins
 
     @property
     def noaa_user_agent(self) -> str:

@@ -1,5 +1,6 @@
 import bearing from '@turf/bearing'
 import destination from '@turf/destination'
+import { apiUrl } from '@/lib/api'
 
 const ESCAPE_TRIES_MILES = [40, 25, 12]
 
@@ -22,7 +23,7 @@ export async function fetchDrivingRoute(
   dest: { lat: number; lon: number },
 ): Promise<GeoJSON.LineString | null> {
   try {
-    const res = await fetch('/api/escape-route', {
+    const res = await fetch(apiUrl('/api/escape-route'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

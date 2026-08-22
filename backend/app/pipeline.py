@@ -110,8 +110,9 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
     if not settings.openrouter_api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
-    try:
-        brief, headline, beats = await synthesize_brief(
+    threat = pick_threat_anchor(incidents, hotspots, lat, lon)
+    brief_res, items_res = await asyncio.gather(
+        synthesize_brief(
             address=address,
             lat=lat,
             lon=lon,
@@ -120,15 +121,8 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
             alerts=alerts,
             hotspots=hotspots,
             incidents=incidents,
-        )
-    except Exception as exc:
-        logger.warning("brief failed, using local copy: %s", exc)
-        brief, headline, beats = _fallback_brief(
-            address, hazard_zone, wind, alerts, hotspots, incidents
-        )
-    threat = pick_threat_anchor(incidents, hotspots, lat, lon)
-    try:
-        raw_items = await generate_checklist(
+        ),
+        generate_checklist(
             address=address,
             hazard_zone=hazard_zone,
             docs=docs,
@@ -139,9 +133,18 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
             lat=lat,
             lon=lon,
             threat=threat,
+        ),
+        return_exceptions=True,
+    )
+    if isinstance(brief_res, BaseException):
+        logger.warning("brief failed, using local copy: %s", brief_res)
+        brief, headline, beats = _fallback_brief(
+            address, hazard_zone, wind, alerts, hotspots, incidents
         )
-    except Exception as exc:
-        logger.warning("checklist failed, using local copy: %s", exc)
+    else:
+        brief, headline, beats = brief_res
+    if isinstance(items_res, BaseException):
+        logger.warning("checklist failed, using local copy: %s", items_res)
         raw_items = _fallback_checklist(
             address=address,
             hazard_zone=hazard_zone,
@@ -153,6 +156,8 @@ async def _run_assess(address: str, lat: float, lon: float) -> AssessResponse:
             home_lat=lat,
             home_lon=lon,
         )
+    else:
+        raw_items = items_res
     checklist = verify_checklist(
         raw_items,
         docs,

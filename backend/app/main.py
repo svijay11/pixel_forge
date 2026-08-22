@@ -6,8 +6,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from .config import settings
+from .config import BACKEND_ROOT, settings
 from .hazard import load_hazard_index
 from .models import AssessRequest, AssessResponse, EscapeRouteRequest, EscapeRouteResponse
 from .ors import driving_route
@@ -15,6 +17,8 @@ from .pipeline import run_assess
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+DIST_DIR = BACKEND_ROOT.parent / "dist"
 
 
 @asynccontextmanager
@@ -27,15 +31,17 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Ember wildfire copilot", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_origin,
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=settings.cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/health")
+def health() -> dict[str, bool]:
+    return {"ok": True}
 
 
 @app.post("/api/escape-route", response_model=EscapeRouteResponse)
@@ -59,3 +65,24 @@ async def assess(body: AssessRequest) -> AssessResponse:
     except Exception as exc:  # noqa: BLE001
         logger.exception("assess failed")
         raise HTTPException(status_code=502, detail=f"Assessment failed: {exc}") from exc
+
+
+def _mount_frontend() -> None:
+    if not settings.serve_frontend or not DIST_DIR.exists():
+        return
+    assets = DIST_DIR / "assets"
+    if assets.exists():
+        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def spa(full_path: str):
+        candidate = DIST_DIR / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        index = DIST_DIR / "index.html"
+        if not index.is_file():
+            raise HTTPException(status_code=404, detail="Frontend build missing")
+        return FileResponse(index)
+
+
+_mount_frontend()

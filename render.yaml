@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ember
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SERVE_FRONTEND
+        value: "1"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: FIRMS_MAP_KEY
+        sync: false
+      - key: OPENROUTESERVICE_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-oss-20b:free
+      - key: CONTACT_EMAIL
+        sync: false

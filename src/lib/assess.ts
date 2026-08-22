@@ -1,3 +1,5 @@
+import { apiUrl } from '@/lib/api'
+
 export type ChecklistItem = {
   item: string
   why?: string | null
@@ -53,7 +55,7 @@ export async function assessAddress(input: {
   const timer = window.setTimeout(() => controller.abort(), 70_000)
   let res: Response
   try {
-    res = await fetch('/api/assess', {
+    res = await fetch(apiUrl('/api/assess'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
