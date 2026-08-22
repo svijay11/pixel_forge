@@ -301,31 +301,6 @@
   will-change: transform, opacity;
 }
 
-.ember-dither {
-  position: absolute;
-  inset: auto 0 0;
-  height: 48%;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M4.5 1.2v7.6M1.2 4.5h7.6' stroke='%236e9b6b' stroke-width='1.2' stroke-linecap='square'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 9px 9px;
-}
-
-.ember-dither-fade {
-  -webkit-mask-image: linear-gradient(to top, #000 12%, transparent 100%);
-  mask-image: linear-gradient(to top, #000 12%, transparent 100%);
-}
-
-.ember-dither-wave {
-  -webkit-mask-image: linear-gradient(158deg, transparent 22%, #000 70%);
-  mask-image: linear-gradient(158deg, transparent 22%, #000 70%);
-}
-
-.ember-dither-bloom {
-  -webkit-mask-image: radial-gradient(95% 80% at 78% 110%, #000 18%, transparent 68%);
-  mask-image: radial-gradient(95% 80% at 78% 110%, #000 18%, transparent 68%);
-}
-
 .glyph-bar {
   position: relative;
   height: 1.15em;

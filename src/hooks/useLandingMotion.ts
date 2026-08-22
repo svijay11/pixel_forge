@@ -1,6 +1,6 @@
 import { type RefObject } from 'react'
 import { gsap, Observer, ScrollTrigger, SplitText, useGSAP } from '@/lib/gsap'
-import { animateDithers, riseKickers } from '@/hooks/motionFx'
+import { riseKickers } from '@/hooks/motionFx'
 
 function formatStat(value: number, format: string, suffix: string) {
   const body = format === 'comma' ? value.toLocaleString('en-US') : String(value)
@@ -216,7 +216,6 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
         )
 
         riseKickers(rootEl)
-        animateDithers(rootEl)
 
         const cleanups: Array<() => void> = []
 

@@ -1,19 +1,5 @@
 import { gsap } from '@/lib/gsap'
 
-export function animateDithers(root: HTMLElement) {
-  root.querySelectorAll<HTMLElement>('.ember-dither').forEach((el, i) => {
-    gsap.to(el, {
-      backgroundPosition: `${20 + i * 12}px ${-16 - i * 8}px`,
-      x: 10 - i * 6,
-      y: -12 + i * 7,
-      duration: 6.2 + i * 1.8,
-      yoyo: true,
-      repeat: -1,
-      ease: 'sine.inOut',
-    })
-  })
-}
-
 export function fillGlyphBars(root: HTMLElement) {
   root.querySelectorAll<HTMLElement>('.glyph-bar-fill').forEach((el) => {
     const fill = Number(el.dataset.fill ?? 0)

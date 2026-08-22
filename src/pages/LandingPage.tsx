@@ -27,19 +27,19 @@ const FEATURES = [
     title: 'Detections, not a blog post',
     body: 'The brief starts from live heat detections and local conditions. If a source is missing, we say so instead of filling the gap with generic advice.',
     icon: Crosshair,
-    dither: 'fade' as const,
+    visual: 'radar' as const,
   },
   {
     title: 'Written for one address',
     body: 'Vegetation, slope, and access change from lot to lot. The output is for the structure you entered, not for “California homeowners.”',
     icon: House,
-    dither: 'wave' as const,
+    visual: 'lot' as const,
   },
   {
     title: 'A list you can finish',
     body: 'The checklist is short, ordered, and specific to the house. It is meant to be done, not saved in a tab.',
     icon: ListChecks,
-    dither: 'bloom' as const,
+    visual: 'list' as const,
   },
 ]
 
@@ -275,7 +275,7 @@ export function LandingPage() {
                   icon={feature.icon}
                   title={feature.title}
                   body={feature.body}
-                  dither={feature.dither}
+                  visual={feature.visual}
                 />
               ))}
             </div>
