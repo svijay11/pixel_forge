@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent } from 'react'
 import { Check, MapPin, ScanSearch } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { gsap, useGSAP } from '@/lib/gsap'
+import { gsap, ScrollTrigger, useGSAP } from '@/lib/gsap'
 
 const STEPS = [
   {
@@ -88,28 +88,71 @@ function StepPreview({ index }: { index: number }) {
   )
 }
 
+function stepFromProgress(progress: number) {
+  return Math.min(STEPS.length - 1, Math.round(progress * (STEPS.length - 1)))
+}
+
 export function HowStepper() {
   const rootRef = useRef<HTMLDivElement>(null)
   const fillRef = useRef<HTMLDivElement>(null)
   const copyRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const skipFade = useRef(true)
-  const pausedRef = useRef(false)
   const [active, setActive] = useState(0)
   const activeRef = useRef(0)
   activeRef.current = active
 
   useGSAP(
+    (_context, contextSafe) => {
+      const fill = fillRef.current
+      const section = document.getElementById('how')
+      if (!fill || !section || !contextSafe) return
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (reduced) return
+
+      gsap.set(fill, { scaleX: 0, transformOrigin: 'left center' })
+      const fillTo = gsap.quickTo(fill, 'scaleX', { duration: 0.28, ease: 'power2.out' })
+      const applyStep = contextSafe((next: number) => {
+        if (next !== activeRef.current) setActive(next)
+      })
+
+      ScrollTrigger.create({
+        id: 'how-steps',
+        trigger: section,
+        start: 'top top',
+        end: () => `+=${Math.round(window.innerHeight * (window.innerWidth < 768 ? 1.9 : 2.45))}`,
+        pin: true,
+        pinSpacing: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        snap: {
+          snapTo: (progress) => Math.round(progress * (STEPS.length - 1)) / (STEPS.length - 1),
+          duration: 0.22,
+          delay: 0.02,
+          ease: 'power1.inOut',
+        },
+        onUpdate: (self) => {
+          fillTo(self.progress)
+          applyStep(stepFromProgress(self.progress))
+        },
+      })
+    },
+    { scope: rootRef },
+  )
+
+  useGSAP(
     () => {
       const fill = fillRef.current
-      if (!fill) return
-
-      gsap.to(fill, {
-        scaleX: active / Math.max(STEPS.length - 1, 1),
-        duration: 0.55,
-        ease: 'emberOut',
-        overwrite: 'auto',
-      })
+      const pinned = Boolean(ScrollTrigger.getById('how-steps'))
+      if (fill && !pinned) {
+        gsap.to(fill, {
+          scaleX: active / Math.max(STEPS.length - 1, 1),
+          duration: 0.55,
+          ease: 'emberOut',
+          overwrite: 'auto',
+        })
+      }
 
       if (skipFade.current) {
         skipFade.current = false
@@ -118,38 +161,27 @@ export function HowStepper() {
 
       gsap.fromTo(
         [copyRef.current, previewRef.current],
-        { y: 10, autoAlpha: 0.25 },
+        { y: 12, autoAlpha: 0.2 },
         { y: 0, autoAlpha: 1, duration: 0.42, ease: 'emberOut', stagger: 0.05, overwrite: 'auto' },
       )
     },
     { scope: rootRef, dependencies: [active] },
   )
 
-  useEffect(() => {
-    const el = rootRef.current
-    if (!el) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
-
-    let inView = false
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        inView = entry.isIntersecting
-      },
-      { threshold: 0.4 },
-    )
-    io.observe(el)
-
-    const id = window.setInterval(() => {
-      if (!inView || pausedRef.current) return
-      setActive((current) => (current + 1) % STEPS.length)
-    }, 5200)
-
-    return () => {
-      io.disconnect()
-      window.clearInterval(id)
+  const goToStep = (index: number) => {
+    const st = ScrollTrigger.getById('how-steps')
+    if (!st) {
+      setActive(index)
+      return
     }
-  }, [])
+    const progress = index / Math.max(STEPS.length - 1, 1)
+    gsap.to(window, {
+      duration: 0.8,
+      scrollTo: st.start + (st.end - st.start) * progress,
+      ease: 'power3.inOut',
+      overwrite: 'auto',
+    })
+  }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowDown' && event.key !== 'ArrowLeft' && event.key !== 'ArrowUp') {
@@ -158,9 +190,9 @@ export function HowStepper() {
     event.preventDefault()
     const next =
       event.key === 'ArrowRight' || event.key === 'ArrowDown'
-        ? (activeRef.current + 1) % STEPS.length
-        : (activeRef.current - 1 + STEPS.length) % STEPS.length
-    setActive(next)
+        ? Math.min(STEPS.length - 1, activeRef.current + 1)
+        : Math.max(0, activeRef.current - 1)
+    goToStep(next)
     requestAnimationFrame(() => {
       rootRef.current?.querySelector<HTMLButtonElement>(`#how-tab-${next}`)?.focus()
     })
@@ -169,19 +201,10 @@ export function HowStepper() {
   const step = STEPS[active]
 
   return (
-    <div
-      ref={rootRef}
-      className="mt-16"
-      onMouseEnter={() => {
-        pausedRef.current = true
-      }}
-      onMouseLeave={() => {
-        pausedRef.current = false
-      }}
-    >
+    <div ref={rootRef} className="mt-16">
       <div className="flex items-end justify-between gap-6">
         <p className="gsap-kicker font-sans text-[10px] tracking-[0.18em] text-ash uppercase">
-          Three steps
+          Scroll the steps
         </p>
         <p className="font-display text-sm tracking-[-0.01em] text-sage-monitor" aria-live="polite">
           {step.n} / 03
@@ -221,11 +244,7 @@ export function HowStepper() {
                   'how-step-tab group flex cursor-pointer items-start gap-4 rounded-md px-1 py-3 text-left transition-colors md:flex-col md:items-center md:gap-4 md:px-4 md:py-0',
                   selected ? 'text-ink' : 'text-ink/40 hover:text-ink/70',
                 )}
-                onMouseEnter={() => {
-                  if (window.matchMedia('(pointer: fine)').matches) setActive(index)
-                }}
-                onFocus={() => setActive(index)}
-                onClick={() => setActive(index)}
+                onClick={() => goToStep(index)}
               >
                 <span
                   className={cn(
@@ -250,7 +269,7 @@ export function HowStepper() {
         id="how-panel"
         role="tabpanel"
         aria-labelledby={`how-tab-${active}`}
-        className="how-stage mt-10 grid gap-8 border-t border-ink/12 pt-10 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start md:gap-14"
+        className="how-stage mt-10 grid min-h-[13.5rem] gap-8 border-t border-ink/12 pt-10 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start md:gap-14"
       >
         <div className="gsap-rise">
           <div ref={copyRef}>
