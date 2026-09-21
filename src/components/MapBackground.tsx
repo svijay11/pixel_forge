@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { useReducedMotion } from 'framer-motion'
 import { AMBIENT_VIEWS, CA_CENTER, CA_ZOOM, HOTSPOTS } from '../data/hotspots'
-import { formatCoord } from '../lib/mapStyle'
+import { formatCoord, addDarkBasemap } from '../lib/mapStyle'
 
 type MapBackgroundProps = {
   className?: string
@@ -44,11 +44,7 @@ export function MapBackground({ className = '', onCoordChange }: MapBackgroundPr
       keyboard: false,
     })
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map)
+    addDarkBasemap(map)
 
     const markers = HOTSPOTS.map((spot) =>
       L.marker([spot.lat, spot.lng], {

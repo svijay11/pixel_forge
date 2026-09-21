@@ -5,6 +5,7 @@ import circle from '@turf/circle'
 import { X, House, Flame } from 'lucide-react'
 import type { ThreatAnchor } from '@/lib/threatAnchor'
 import { fetchEscapeRoute } from '@/lib/escapeRoute'
+import { addDarkBasemap } from '@/lib/mapStyle'
 
 const RING_MONITOR = '#6E9B6B'
 const RING_ELEVATED = '#FF7A3D'
@@ -70,11 +71,7 @@ export function ThreatMapPanel({
       attributionControl: true,
     })
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map)
+    addDarkBasemap(map)
 
     map.createPane('threat-rings')
     map.createPane('threat-route')

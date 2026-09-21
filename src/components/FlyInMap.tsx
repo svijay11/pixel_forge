@@ -3,7 +3,7 @@ import L from 'leaflet'
 import { Link } from 'react-router-dom'
 import { gsap, useGSAP } from '@/lib/gsap'
 import { WaitClock } from '@/components/WaitClock'
-import { formatCoord } from '@/lib/mapStyle'
+import { formatCoord, addDarkBasemap } from '@/lib/mapStyle'
 import { CA_CENTER } from '@/data/hotspots'
 
 const US_CENTER: L.LatLngTuple = [39.8283, -98.5795]
@@ -129,11 +129,7 @@ export function FlyInMap({
       fadeAnimation: true,
     })
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map)
+    addDarkBasemap(map)
 
     const marker = L.marker(target, {
       icon: destinationIcon(),
