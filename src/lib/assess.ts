@@ -77,7 +77,10 @@ export async function assessAddress(input: {
         detail = body.detail
       }
     } catch {
-      if (res.status === 502 || res.status === 503) {
+      if (res.status === 404) {
+        detail =
+          'The assess API was not found. On Vercel, add the Python API keys and redeploy. Locally, start the backend on port 8000.'
+      } else if (res.status === 502 || res.status === 503) {
         detail = 'The assess server is not running. Start the backend and try again.'
       }
     }

@@ -40,6 +40,7 @@ app.add_middleware(
 
 
 @app.get("/health")
+@app.get("/api/health")
 def health() -> dict[str, bool]:
     return {"ok": True}
 
@@ -76,6 +77,8 @@ def _mount_frontend() -> None:
 
     @app.get("/{full_path:path}")
     async def spa(full_path: str):
+        if full_path.startswith("api/") or full_path in {"health", "docs", "openapi.json", "redoc"}:
+            raise HTTPException(status_code=404, detail="Not Found")
         candidate = DIST_DIR / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate)

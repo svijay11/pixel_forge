@@ -1,6 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
   "rewrites": [
+    { "source": "/health", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{node_modules/**,backend/.venv/**,backend/data/**,dist/**,src/**,public/**,**/*.geojson}"
+    },
+    "api/[...path].py": {
+      "maxDuration": 60,
+      "excludeFiles": "{node_modules/**,backend/.venv/**,backend/data/**,dist/**,src/**,public/**,**/*.geojson}"
+    }
+  }
 }
